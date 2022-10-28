@@ -11,8 +11,16 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@mui/icons-material": "^5.10.9",
+    "@mui/material": "^5.10.11",
+    "copy-to-clipboard": "^3.3.2",
+    "darkreader": "^4.9.58",
+    "electron-prompt": "^1.7.0",
     "electron-serve": "^1.1.0",
     "electron-store": "^8.1.0",
+    "ethers": "^5.7.2",
     "keytar": "^7.9.0"
   },
   "devDependencies": {
