@@ -1,6 +1,6 @@
-appId: com.example.nextron
-productName: My Nextron App
-copyright: Copyright © 2018 Yoshihide Shiono
+appId: xyz.arieswallet.wallet.address.book
+productName: Wallet Address Book
+copyright: Copyright © 2022 lolieatapple
 directories:
   output: dist
   buildResources: resources

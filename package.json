@@ -1,9 +1,9 @@
 {
   "private": true,
-  "name": "my-nextron-app",
-  "description": "My application description",
+  "name": "wallet-address-book",
+  "description": "Save many wallet address and private key in it",
   "version": "1.0.0",
-  "author": "Yoshihide Shiono <shiono.yoshihide@gmail.com>",
+  "author": "lolieatapple@gmail.com",
   "main": "app/background.js",
   "scripts": {
     "dev": "nextron",
