@@ -1,31 +1,14 @@
-<p align="center"><img src="https://i.imgur.com/X7dSE68.png"></p>
+## Wallet Address Book
 
-## Usage
+Wallet address book save many addresses into system key chain app. 
 
-### Create an App
+It default use encrypted store. Use touchID to unlock and copy private key.
 
-```
-# with npx
-$ npx create-nextron-app my-app --example with-javascript
+It could create and hold wallet address quickly and safely.
 
-# with yarn
-$ yarn create nextron-app my-app --example with-javascript
+![screen](./resources/screen.png)
 
-# with pnpx
-$ pnpx create-nextron-app my-app --example with-javascript
-```
 
-### Install Dependencies
-
-```
-$ cd my-app
-
-# using yarn or npm
-$ yarn (or `npm install`)
-
-# using pnpm
-$ pnpm install --shamefully-hoist
-```
 
 ### Use it
 

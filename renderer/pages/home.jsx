@@ -19,6 +19,7 @@ function Home() {
   const [update, setUpdate] = React.useState(0);
   const [addrs, setAddrs] = React.useState([]);
   const [successInfo, setSuccessInfo] = useState('');
+  const [filter, setFilter] = useState('');
   useEffect(()=>{
     const func = async () => {
       let ret = await ipcRenderer.invoke('getAllPks');
@@ -35,7 +36,7 @@ function Home() {
       <Stack spacing={1} style={{padding: 10}}>
         <Paper style={{ padding: 15, borderRadius: 15 }} elevation={4} >
           <Stack spacing={2} direction="row">
-            <TextField fullWidth size="small" label='Search / Filter' />
+            <TextField fullWidth size="small" label='Search / Filter' value={filter} onChange={e=>setFilter(e.target.value)} />
             <Button size="small" variant='contained' sx={{textTransform:'none'}} onClick={async ()=>{
               let wallet = ethers.Wallet.createRandom();
               let pk = wallet.privateKey;
@@ -67,8 +68,8 @@ function Home() {
             </TableHead>
             <TableBody>
               {
-                addrs.map((v)=>{
-                  return <TableRow key={v.account}>
+                addrs.filter(v=>JSON.parse(v.password).name.toLowerCase().includes(filter.toLowerCase()) || v.account.toLowerCase().includes(filter.toLowerCase())).map(v=>{
+                  return <TableRow key={v.account} >
                   <TableCell>{JSON.parse(v.password).name} <Tooltip title="Modify" ><EditIcon sx={{fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer'}} onClick={async ()=>{
                     let name = await ipcRenderer.invoke('prompt', {title: 'Modify Name', label: 'Name', value: JSON.parse(v.password).name, type: 'input'});
                     let json = JSON.parse(v.password);
@@ -78,7 +79,7 @@ function Home() {
                   }} /></Tooltip></TableCell>
                   <TableCell>
                     <Stack spacing={1} direction="row" >
-                      <div>{v.account}</div>
+                      <div style={{fontFamily:"Andale Mono"}}>{v.account}</div>
                       <Tooltip title="Copy Address" ><ContentCopyIcon sx={{fontSize: '14px', position: 'relative', top: '2px', left: '4px', cursor: 'pointer'}}  onClick={async ()=>{
                         if (copy2Clipboard(v.account)) {
                           setSuccessInfo("Address Copyed");
