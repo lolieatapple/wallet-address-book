@@ -87,7 +87,7 @@ function Home() {
                       }} /></Tooltip>
                       <Tooltip title="Copy Private Key" ><VpnKeyIcon sx={{fontSize: '14px', position: 'relative', top: '2px', left: '4px', cursor: 'pointer'}}  onClick={async ()=>{
                         let pk = await ipcRenderer.invoke('getPk', v.account);
-                        if (copy2Clipboard(JSON.parse(pk).pk)) {
+                        if (pk && copy2Clipboard(JSON.parse(pk).pk)) {
                           setSuccessInfo("Private Key Copyed");
                         }
                       }} /></Tooltip>

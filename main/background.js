@@ -48,8 +48,8 @@ if (isProd) {
       return ret;
     } catch (error) {
       console.log(error);
+      return false;
     }
-    return false;
   });
 
   ipcMain.handle('getAllPks', async (event, message) => {
