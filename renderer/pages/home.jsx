@@ -13,6 +13,7 @@ import { ethers } from 'ethers';
 import copy2Clipboard from 'copy-to-clipboard';
 import { MessageBox } from '../components/message';
 import { useState } from 'react';
+import sleep from 'ko-sleep';
 const { ipcRenderer, shell } = require('electron');
 // const balanceApi = 'https://api.rabby.io/v1/user/total_balance?id=';
 const balanceApi = 'https://api.debank.com/user/total_balance?addr=';
@@ -29,10 +30,16 @@ function Home() {
       setAddrs(ret);
       let _balances = [];
       for (let i=0; i<ret.length; i++) {
-        let _balance = await fetch(balanceApi + ret[i].account);
-        _balance = await _balance.json();
-        _balance = Number(Number(_balance.data.total_usd_value).toFixed(2));
-        _balances.push(_balance);
+        try {
+          let _balance = await fetch(balanceApi + ret[i].account);
+          _balance = await _balance.json();
+          _balance = Number(Number(_balance.data.total_usd_value).toFixed(2));
+          _balances.push(_balance);
+          await sleep(200);
+        } catch (error) {
+          console.error(error.message);
+          _balances.push(0);
+        }
       }
       setBalances(_balances);
     }

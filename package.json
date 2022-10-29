@@ -21,7 +21,8 @@
     "electron-serve": "^1.1.0",
     "electron-store": "^8.1.0",
     "ethers": "^5.7.2",
-    "keytar": "^7.9.0"
+    "keytar": "^7.9.0",
+    "ko-sleep": "^1.1.4"
   },
   "devDependencies": {
     "electron": "^20.1.0",
