@@ -7,23 +7,34 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import PublicIcon from '@mui/icons-material/Public';
 import { useEffect } from 'react';
 import { ethers } from 'ethers';
 import copy2Clipboard from 'copy-to-clipboard';
 import { MessageBox } from '../components/message';
 import { useState } from 'react';
-const { ipcRenderer } = require('electron');
-
+const { ipcRenderer, shell } = require('electron');
+// const balanceApi = 'https://api.rabby.io/v1/user/total_balance?id=';
+const balanceApi = 'https://api.debank.com/user/total_balance?addr=';
 
 function Home() {
   const [update, setUpdate] = React.useState(0);
   const [addrs, setAddrs] = React.useState([]);
   const [successInfo, setSuccessInfo] = useState('');
   const [filter, setFilter] = useState('');
+  const [balances, setBalances] = useState([]);
   useEffect(()=>{
     const func = async () => {
       let ret = await ipcRenderer.invoke('getAllPks');
       setAddrs(ret);
+      let _balances = [];
+      for (let i=0; i<ret.length; i++) {
+        let _balance = await fetch(balanceApi + ret[i].account);
+        _balance = await _balance.json();
+        _balance = Number(Number(_balance.data.total_usd_value).toFixed(2));
+        _balances.push(_balance);
+      }
+      setBalances(_balances);
     }
 
     func();
@@ -64,11 +75,12 @@ function Home() {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Address</TableCell>
+                <TableCell>Balance</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {
-                addrs.filter(v=>JSON.parse(v.password).name.toLowerCase().includes(filter.toLowerCase()) || v.account.toLowerCase().includes(filter.toLowerCase())).map(v=>{
+                addrs.filter(v=>JSON.parse(v.password).name.toLowerCase().includes(filter.toLowerCase()) || v.account.toLowerCase().includes(filter.toLowerCase())).map((v,i)=>{
                   return <TableRow key={v.account} >
                   <TableCell>{JSON.parse(v.password).name} <Tooltip title="Modify" ><EditIcon sx={{fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer'}} onClick={async ()=>{
                     let name = await ipcRenderer.invoke('prompt', {title: 'Modify Name', label: 'Name', value: JSON.parse(v.password).name, type: 'input'});
@@ -98,6 +110,9 @@ function Home() {
                     </Stack>
                     
                   </TableCell>
+                  <TableCell>{balances[i] !== undefined ? '$'+balances[i]:'loading'} <Tooltip title="Show In Debank" ><PublicIcon sx={{fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer'}} onClick={async ()=>{
+                    shell.openExternal('https://debank.com/profile/' + v.account);
+                  }} /></Tooltip></TableCell>
                 </TableRow>
                 })
               }
