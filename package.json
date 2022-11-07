@@ -2,7 +2,7 @@
   "private": true,
   "name": "wallet-address-book",
   "description": "Save many wallet address and private key in it",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "lolieatapple@gmail.com",
   "main": "app/background.js",
   "scripts": {
