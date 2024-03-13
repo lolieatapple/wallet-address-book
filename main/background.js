@@ -2,6 +2,7 @@ import { app, ipcMain, systemPreferences, nativeTheme } from 'electron';
 import serve from 'electron-serve';
 import { createWindow } from './helpers';
 import keytar from 'keytar';
+import axios from 'axios';
 const prompt = require('electron-prompt');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -66,6 +67,16 @@ if (isProd) {
     return false;
   });
 
+  ipcMain.handle('getBalance', async (event, message) => {
+    try {
+      let ret = await fetchBalance(message);
+      return ret;
+    } catch (error) {
+      console.log(error);
+    }
+    return false;
+  });
+
   ipcMain.handle('dark-mode:toggle', () => {
     if (nativeTheme.shouldUseDarkColors) {
       nativeTheme.themeSource = 'light'
@@ -88,6 +99,11 @@ if (isProd) {
   }
 })();
 
+async function fetchBalance(addresses) {
+  console.log('fetching balances for', addresses);
+  let debankAssets = await axios.post('https://assets-manager-ui.vercel.app/api/assets/totalBalance', { addresses });
+  return debankAssets.data;
+}
 
 
 app.on('window-all-closed', () => {

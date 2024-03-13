@@ -20,29 +20,52 @@ const { ipcRenderer, shell } = require('electron');
 // const balanceApi = 'https://api.rabby.io/v1/user/total_balance?id=';
 const balanceApi = 'https://api.debank.com/user/total_balance?addr=';
 
+export function formatToDollar(number) {
+  if (Number(number) === 0) {
+    return '$0';
+  }
+
+  if (Number(number) < 0.01) {
+    return '< $0.01';
+  }
+  // 将数值转换为字符串
+  let numStr = number.toString();
+  
+  // 判断是否有小数部分
+  let decimalIndex = numStr.indexOf('.');
+  let integerPart = decimalIndex !== -1 ? numStr.slice(0, decimalIndex) : numStr;
+  let decimalPart = decimalIndex !== -1 ? numStr.slice(decimalIndex) : '';
+  
+  // 将整数部分从右到左每三位添加一个逗号
+  let formattedIntegerPart = '';
+  for (let i = integerPart.length - 1, count = 0; i >= 0; i--, count++) {
+    if (count > 0 && count % 3 === 0) {
+      formattedIntegerPart = ',' + formattedIntegerPart;
+    }
+    formattedIntegerPart = integerPart[i] + formattedIntegerPart;
+  }
+  
+  // 处理小数部分,保留两位小数
+  let formattedDecimalPart = decimalPart.slice(0, 3);
+  if (formattedDecimalPart.length < 3) {
+    formattedDecimalPart += '0'.repeat(3 - formattedDecimalPart.length);
+  }
+  
+  // 拼接整数部分和小数部分,添加美元符号
+  let formattedNumber = '$' + formattedIntegerPart + formattedDecimalPart;
+  
+  return formattedNumber;
+}
+
+
 function TableLine(props) {
   let v = props.v;
-  const [balance, setBalance] = useState('queued');
+  let balances = props.balances;
+  let balance = balances[v.account] ? formatToDollar(balances[v.account].total_usd_value) : 'error';
   let update = props.update;
   let setUpdate = props.setUpdate;
   let i= props.i;
-  useEffect(()=>{
-    const func = async () => {
-      console.log('load balance', v.account);
-      try {
-        setBalance('loading');
-        let _balance = await fetch(balanceApi + v.account);
-        _balance = await _balance.json();
-        _balance = Number(Number(_balance.data.total_usd_value).toFixed(2));
-        setBalance('$'+_balance);
-      } catch (error) {
-        console.error(error.message);
-        setBalance('failed');
-      }
-    }
 
-    setTimeout(func, i * 5000);
-  }, [update]);
   return (
     <TableRow >
       <TableCell>{JSON.parse(v.password).name} <Tooltip title="Modify" ><EditIcon sx={{ fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer' }} onClick={async () => {
@@ -50,7 +73,6 @@ function TableLine(props) {
         let json = JSON.parse(v.password);
         json.name = name;
         await ipcRenderer.invoke('setPk', { address: v.account, json: JSON.stringify(json) });
-        setUpdate(Date.now());
       }} /></Tooltip></TableCell>
       <TableCell>
         <Stack spacing={1} direction="row" >
@@ -68,7 +90,6 @@ function TableLine(props) {
           }} /></Tooltip>
           <Tooltip title="Delete Account" ><DeleteOutlineIcon sx={{ fontSize: '14px', position: 'relative', top: '2px', left: '4px', cursor: 'pointer' }} onClick={async () => {
             await ipcRenderer.invoke('delPk', v.account);
-            setUpdate(Date.now());
           }} /></Tooltip>
         </Stack>
 
@@ -76,17 +97,9 @@ function TableLine(props) {
       <TableCell>{balance} <Tooltip title="Show In Debank" ><PublicIcon sx={{ fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer' }} onClick={async () => {
         shell.openExternal('https://debank.com/profile/' + v.account);
       }} /></Tooltip>
-      <Tooltip title="Refresh Balance" ><RefreshIcon sx={{ fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer' }} onClick={async () => {
-        try {
-          let _balance = await fetch(balanceApi + v.account);
-          _balance = await _balance.json();
-          _balance = Number(Number(_balance.data.total_usd_value).toFixed(2));
-          setBalance(_balance);
-        } catch (error) {
-          console.error(error.message);
-          setBalance('error');
-        }
-      }} /></Tooltip>
+      {/* <Tooltip title="Refresh Balance" ><RefreshIcon sx={{ fontSize: '14px', position: 'relative', top: '1px', left: '2px', cursor: 'pointer' }} onClick={async () => {
+        setUpdate(Date.now());
+      }} /></Tooltip> */}
       </TableCell>
     </TableRow>
   )
@@ -97,14 +110,22 @@ function Home() {
   const [addrs, setAddrs] = React.useState([]);
   const [successInfo, setSuccessInfo] = useState('');
   const [filter, setFilter] = useState('');
+  const [balances, setBalances] = useState({});
   useEffect(() => {
     const func = async () => {
       let ret = await ipcRenderer.invoke('getAllPks');
+      console.log('addrs', ret);
+
+      let balances = await ipcRenderer.invoke('getBalance', ret.map(v => v.account));
+      console.log('balances', balances);
+      setBalances(balances);
       setAddrs(ret);
     }
 
     func();
   }, [update]);
+
+
   return (
     <React.Fragment>
       <Head>
@@ -147,7 +168,7 @@ function Home() {
             <TableBody>
               {
                 addrs.filter(v => JSON.parse(v.password).name.toLowerCase().includes(filter.toLowerCase()) || v.account.toLowerCase().includes(filter.toLowerCase())).map((v, i) => {
-                  return <TableLine key={v.account} v={v} update={update} setUpdate={setUpdate} i={i} />
+                  return <TableLine key={v.account} v={v} update={update} setUpdate={setUpdate} i={i} balances={balances} />
                 })
               }
             </TableBody>
