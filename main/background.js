@@ -55,7 +55,8 @@ if (isProd) {
 
   ipcMain.handle('getAllPks', async (event, message) => {
     try {
-      // await systemPreferences.promptTouchID('Unlock To Use')
+      console.log('getAllPks');
+      // await systemPreferences.promptTouchID('Unlock to access all accounts');
       let ret = await keytar.findCredentials('wallet-addr-book');
       // ret.map(v=>{
       //   keytar.deletePassword('wallet-addr-book', v.account);

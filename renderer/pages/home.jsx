@@ -79,13 +79,13 @@ function TableLine(props) {
           <div style={{ fontFamily: "Andale Mono" }}>{v.account}</div>
           <Tooltip title="Copy Address" ><ContentCopyIcon sx={{ fontSize: '14px', position: 'relative', top: '2px', left: '4px', cursor: 'pointer' }} onClick={async () => {
             if (copy2Clipboard(v.account)) {
-              setSuccessInfo("Address Copyed");
+              props.setSuccessInfo("Address Copyed");
             }
           }} /></Tooltip>
           <Tooltip title="Copy Private Key" ><VpnKeyIcon sx={{ fontSize: '14px', position: 'relative', top: '2px', left: '4px', cursor: 'pointer' }} onClick={async () => {
             let pk = await ipcRenderer.invoke('getPk', v.account);
             if (pk && copy2Clipboard(JSON.parse(pk).pk)) {
-              setSuccessInfo("Private Key Copyed");
+              props.setSuccessInfo("Private Key Copyed");
             }
           }} /></Tooltip>
           <Tooltip title="Delete Account" ><DeleteOutlineIcon sx={{ fontSize: '14px', position: 'relative', top: '2px', left: '4px', cursor: 'pointer' }} onClick={async () => {
@@ -114,7 +114,7 @@ function Home() {
   useEffect(() => {
     const func = async () => {
       let ret = await ipcRenderer.invoke('getAllPks');
-      console.log('addrs', ret);
+      console.log('addrs', ret.length);
 
       let balances = await ipcRenderer.invoke('getBalance', ret.map(v => v.account));
       console.log('balances', balances);
@@ -167,8 +167,8 @@ function Home() {
             </TableHead>
             <TableBody>
               {
-                addrs.filter(v => JSON.parse(v.password).name.toLowerCase().includes(filter.toLowerCase()) || v.account.toLowerCase().includes(filter.toLowerCase())).map((v, i) => {
-                  return <TableLine key={v.account} v={v} update={update} setUpdate={setUpdate} i={i} balances={balances} />
+                addrs.filter(v => JSON.parse(v.password).name?.toLowerCase().includes(filter.toLowerCase()) || v.account.toLowerCase().includes(filter.toLowerCase())).map((v, i) => {
+                  return <TableLine key={v.account} v={v} update={update} setUpdate={setUpdate} i={i} balances={balances} setSuccessInfo={setSuccessInfo} />
                 })
               }
             </TableBody>
