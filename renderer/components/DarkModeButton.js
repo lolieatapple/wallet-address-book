@@ -5,16 +5,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Tooltip,
+  IconButton,
+  useTheme,
+  alpha
 } from "@mui/material";
 const { ipcRenderer } = require('electron');
 
-import { DarkMode, WbSunny } from "@mui/icons-material";
+import { DarkMode, LightMode } from "@mui/icons-material";
 let DarkReader;
 if (typeof window !== "undefined") {
   DarkReader = require("darkreader");
 }
 
 export default function DarkModeButton(props) {
+  const theme = useTheme();
   const [updateDark, setUpdateDark] = useState(0);
   const isDarkMode = useMemo(() => {
     return DarkReader ? DarkReader.isEnabled() : false;
@@ -39,7 +43,7 @@ export default function DarkModeButton(props) {
     }
   }, [DarkReader, setUpdateDark]); 
 
-  useEffect(()=>{
+  useEffect(() => {
     let t = new Date();
     console.log('getHours', t.getHours());
     if (t.getHours() >= 18 || t.getHours() <= 6) {
@@ -53,24 +57,38 @@ export default function DarkModeButton(props) {
   }, [DarkReader]);
 
   return (
-    <Tooltip title="切换夜晚模式">
-      {isDarkMode ? (
-        <WbSunny
-          onClick={handleDarkMode}
-          style={{
-            cursor: "pointer",
-            ...props.style,
-          }}
-        />
-      ) : (
-        <DarkMode
-          onClick={handleDarkMode}
-          style={{
-            cursor: "pointer",
-            ...props.style,
-          }}
-        />
-      )}
+    <Tooltip title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>
+      <IconButton
+        onClick={handleDarkMode}
+        sx={{
+          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+          borderRadius: 2,
+          p: 1,
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            backgroundColor: alpha(theme.palette.primary.main, 0.2),
+            transform: 'scale(1.05)'
+          },
+          ...props.sx
+        }}
+        size="medium"
+      >
+        {isDarkMode ? (
+          <LightMode
+            sx={{
+              color: theme.palette.primary.main,
+              fontSize: props.fontSize || 24
+            }}
+          />
+        ) : (
+          <DarkMode
+            sx={{
+              color: theme.palette.primary.main,
+              fontSize: props.fontSize || 24
+            }}
+          />
+        )}
+      </IconButton>
     </Tooltip>
   );
 }

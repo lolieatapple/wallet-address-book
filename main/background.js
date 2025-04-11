@@ -17,8 +17,8 @@ if (isProd) {
   await app.whenReady();
 
   const mainWindow = createWindow('main', {
-    width: 960,
-    height: 600,
+    width: 1200,
+    height: 800,
   });
 
   ipcMain.handle('setPk', async (event, message) => {
@@ -100,12 +100,53 @@ if (isProd) {
   }
 })();
 
+// Cache for balance data
+const balanceCache = {
+  data: {},
+  timestamps: {}
+};
+
 async function fetchBalance(addresses) {
   console.log('fetching balances for', addresses);
-  let debankAssets = await axios.post('https://assets-manager-ui.vercel.app/api/assets/totalBalance', { addresses });
-  return debankAssets.data;
+  
+  // Sort addresses to ensure consistent cache key regardless of order
+  const sortedAddresses = [...addresses].sort();
+  const cacheKey = sortedAddresses.join(',');
+  const currentTime = Date.now();
+  const cacheExpiration = 10 * 60 * 1000; // 10 minutes in milliseconds
+  
+  // Check if we have a valid cache entry
+  if (
+    balanceCache.data[cacheKey] && 
+    balanceCache.timestamps[cacheKey] && 
+    (currentTime - balanceCache.timestamps[cacheKey]) < cacheExpiration
+  ) {
+    console.log('Using cached balance data');
+    return balanceCache.data[cacheKey];
+  }
+  
+  // If no valid cache, fetch from API
+  try {
+    let debankAssets = await axios.post('https://assets-manager-ui.vercel.app/api/assets/totalBalance', { addresses });
+    
+    // Update cache
+    balanceCache.data[cacheKey] = debankAssets.data;
+    balanceCache.timestamps[cacheKey] = currentTime;
+    
+    return debankAssets.data;
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    
+    // If we have stale cache data, return it as fallback
+    if (balanceCache.data[cacheKey]) {
+      console.log('Using stale cached data as fallback');
+      return balanceCache.data[cacheKey];
+    }
+    
+    // Otherwise return empty object
+    return {};
+  }
 }
-
 
 app.on('window-all-closed', () => {
   app.quit();
