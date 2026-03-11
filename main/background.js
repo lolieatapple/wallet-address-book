@@ -2,7 +2,8 @@ import { app, ipcMain, systemPreferences, nativeTheme } from 'electron';
 import serve from 'electron-serve';
 import { createWindow } from './helpers';
 import keytar from 'keytar';
-import axios from 'axios';
+import { createBalanceCache } from './services/balance';
+import { startHttpApi, getDefaultAddress, setDefaultAddress } from './services/http-api';
 const prompt = require('electron-prompt');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -13,39 +14,50 @@ if (isProd) {
   app.setPath('userData', `${app.getPath('userData')} (development)`);
 }
 
+const fetchBalance = createBalanceCache();
+let mainWindow;
+
 (async () => {
   await app.whenReady();
 
-  const mainWindow = createWindow('main', {
+  mainWindow = createWindow('main', {
     width: 1200,
     height: 800,
   });
 
+  // Hide to tray instead of quitting on close
+  mainWindow.on('close', (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
   ipcMain.handle('setPk', async (event, message) => {
     try {
-      let ret = await keytar.setPassword('wallet-addr-book', message.address, message.json);
+      await keytar.setPassword('wallet-addr-book', message.address, message.json);
       return true;
     } catch (error) {
       console.log(error);
     }
     return false;
   });
-  
+
   ipcMain.handle('delPk', async (event, message) => {
     try {
-      await systemPreferences.promptTouchID('Remove account: ' + message)
-      let ret = await keytar.deletePassword('wallet-addr-book', message);
+      await systemPreferences.promptTouchID('Remove account: ' + message);
+      await keytar.deletePassword('wallet-addr-book', message);
       return true;
     } catch (error) {
       console.log(error);
     }
     return false;
   });
-  
+
   ipcMain.handle('getPk', async (event, message) => {
     try {
-      await systemPreferences.promptTouchID('Authenticate to read private key')
-      let ret = await keytar.getPassword('wallet-addr-book', message);
+      await systemPreferences.promptTouchID('Authenticate to read private key');
+      const ret = await keytar.getPassword('wallet-addr-book', message);
       return ret;
     } catch (error) {
       console.log(error);
@@ -53,14 +65,9 @@ if (isProd) {
     }
   });
 
-  ipcMain.handle('getAllPks', async (event, message) => {
+  ipcMain.handle('getAllPks', async () => {
     try {
-      console.log('getAllPks');
-      // await systemPreferences.promptTouchID('Unlock to access all accounts');
-      let ret = await keytar.findCredentials('wallet-addr-book');
-      // ret.map(v=>{
-      //   keytar.deletePassword('wallet-addr-book', v.account);
-      // })
+      const ret = await keytar.findCredentials('wallet-addr-book');
       return ret;
     } catch (error) {
       console.log(error);
@@ -70,8 +77,7 @@ if (isProd) {
 
   ipcMain.handle('getBalance', async (event, message) => {
     try {
-      let ret = await fetchBalance(message);
-      return ret;
+      return await fetchBalance(message);
     } catch (error) {
       console.log(error);
     }
@@ -80,16 +86,27 @@ if (isProd) {
 
   ipcMain.handle('dark-mode:toggle', () => {
     if (nativeTheme.shouldUseDarkColors) {
-      nativeTheme.themeSource = 'light'
+      nativeTheme.themeSource = 'light';
     } else {
-      nativeTheme.themeSource = 'dark'
+      nativeTheme.themeSource = 'dark';
     }
-    return nativeTheme.shouldUseDarkColors
-  })
+    return nativeTheme.shouldUseDarkColors;
+  });
 
   ipcMain.handle('prompt', async (e, v) => {
     return await prompt(v);
-  })
+  });
+
+  ipcMain.handle('getDefaultWallet', () => {
+    return getDefaultAddress();
+  });
+
+  ipcMain.handle('setDefaultWallet', (event, address) => {
+    setDefaultAddress(address);
+    return true;
+  });
+
+  startHttpApi();
 
   if (isProd) {
     await mainWindow.loadURL('app://./home.html');
@@ -100,54 +117,18 @@ if (isProd) {
   }
 })();
 
-// Cache for balance data
-const balanceCache = {
-  data: {},
-  timestamps: {}
-};
-
-async function fetchBalance(addresses) {
-  console.log('fetching balances for', addresses);
-  
-  // Sort addresses to ensure consistent cache key regardless of order
-  const sortedAddresses = [...addresses].sort();
-  const cacheKey = sortedAddresses.join(',');
-  const currentTime = Date.now();
-  const cacheExpiration = 10 * 60 * 1000; // 10 minutes in milliseconds
-  
-  // Check if we have a valid cache entry
-  if (
-    balanceCache.data[cacheKey] && 
-    balanceCache.timestamps[cacheKey] && 
-    (currentTime - balanceCache.timestamps[cacheKey]) < cacheExpiration
-  ) {
-    console.log('Using cached balance data');
-    return balanceCache.data[cacheKey];
+// On macOS, re-show window when dock icon is clicked
+app.on('activate', () => {
+  if (mainWindow) {
+    mainWindow.show();
   }
-  
-  // If no valid cache, fetch from API
-  try {
-    let debankAssets = await axios.post('https://assets-manager-ui.vercel.app/api/assets/totalBalance', { addresses });
-    
-    // Update cache
-    balanceCache.data[cacheKey] = debankAssets.data;
-    balanceCache.timestamps[cacheKey] = currentTime;
-    
-    return debankAssets.data;
-  } catch (error) {
-    console.error('Error fetching balance:', error);
-    
-    // If we have stale cache data, return it as fallback
-    if (balanceCache.data[cacheKey]) {
-      console.log('Using stale cached data as fallback');
-      return balanceCache.data[cacheKey];
-    }
-    
-    // Otherwise return empty object
-    return {};
-  }
-}
+});
 
 app.on('window-all-closed', () => {
-  app.quit();
+  // Do nothing — app stays in background
+});
+
+// Allow actual quit from dock menu / Cmd+Q
+app.on('before-quit', () => {
+  app.isQuitting = true;
 });
