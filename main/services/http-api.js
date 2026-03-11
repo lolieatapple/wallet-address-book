@@ -40,7 +40,8 @@ async function handleRequest(req, res) {
       if (!addr) {
         return jsonResponse(res, 404, { error: 'No default wallet set' });
       }
-      return jsonResponse(res, 200, { address: addr });
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      return res.end(addr);
     }
 
     // GET /default/pk
@@ -50,7 +51,8 @@ async function handleRequest(req, res) {
         return jsonResponse(res, 404, { error: 'No default wallet set' });
       }
       const pk = await getPrivateKeyWithAuth(addr, 'API: Read default private key');
-      return jsonResponse(res, 200, { address: addr, privateKey: pk });
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      return res.end(pk);
     }
 
     // GET /wallet/:index/address

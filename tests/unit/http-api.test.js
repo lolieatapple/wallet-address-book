@@ -43,7 +43,8 @@ function get(path) {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
-        resolve({ status: res.statusCode, body: JSON.parse(data) });
+        const isJson = (res.headers['content-type'] || '').includes('application/json');
+        resolve({ status: res.statusCode, body: isJson ? JSON.parse(data) : data });
       });
     }).on('error', reject);
   });
@@ -67,11 +68,11 @@ describe('HTTP API', () => {
       expect(body.error).toMatch(/No default/);
     });
 
-    test('returns address when default is set', async () => {
+    test('returns address as plain text when default is set', async () => {
       setDefaultAddress('0xDefaultAddr');
       const { status, body } = await get('/default/address');
       expect(status).toBe(200);
-      expect(body.address).toBe('0xDefaultAddr');
+      expect(body).toBe('0xDefaultAddr');
     });
   });
 
@@ -81,14 +82,13 @@ describe('HTTP API', () => {
       expect(status).toBe(404);
     });
 
-    test('returns private key after TouchID', async () => {
+    test('returns private key as plain text after TouchID', async () => {
       setDefaultAddress('0xAddr');
       mockGetPassword.mockResolvedValueOnce(JSON.stringify({ pk: '0xSecret', name: 'Test' }));
 
       const { status, body } = await get('/default/pk');
       expect(status).toBe(200);
-      expect(body.address).toBe('0xAddr');
-      expect(body.privateKey).toBe('0xSecret');
+      expect(body).toBe('0xSecret');
       expect(mockPromptTouchID).toHaveBeenCalled();
     });
 
