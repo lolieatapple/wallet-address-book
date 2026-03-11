@@ -9,4 +9,8 @@ files:
     filter:
       - package.json
       - app
+mac:
+  target:
+    - dmg
+    - zip
 publish: null
