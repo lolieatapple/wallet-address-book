@@ -10,6 +10,12 @@ files:
       - package.json
       - app
 mac:
+  category: public.app-category.utilities
+  artifactName: Wallet-Address-Book-${version}-${arch}.${ext}
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   target:
     - dmg
     - zip
