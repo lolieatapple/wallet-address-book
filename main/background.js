@@ -1,4 +1,4 @@
-import { app, ipcMain, systemPreferences, nativeTheme, shell } from 'electron';
+import { app, ipcMain, systemPreferences, nativeTheme, shell, clipboard } from 'electron';
 import serve from 'electron-serve';
 import { createWindow } from './helpers';
 import keytar from 'keytar';
@@ -6,6 +6,7 @@ import Store from 'electron-store';
 import { createBalanceCache } from './services/balance';
 import { startHttpApi, stopHttpApi, getDefaultAddress, setDefaultAddress } from './services/http-api';
 import { getWalletList, upsertWallet, removeWallet, healWalletName } from './services/wallet-index';
+import { restoreWalletNames } from './services/restore-names';
 const prompt = require('electron-prompt');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -94,6 +95,22 @@ let mainWindow;
 
   ipcMain.handle('prompt', async (e, v) => {
     return await prompt(v);
+  });
+
+  // Bulk-restore migrated placeholder names. One TouchID gate up front, then
+  // one keychain ACL dialog per un-restored wallet — answering "Always
+  // Allow" there permanently silences future prompts for that wallet.
+  ipcMain.handle('restoreNames', async () => {
+    await systemPreferences.promptTouchID('Restore wallet names from keychain');
+    return restoreWalletNames();
+  });
+
+  // Main-process clipboard write: unlike document.execCommand('copy') it
+  // needs no user-activation, which has expired by the time the TouchID /
+  // keychain-password wait of a private-key read finishes.
+  ipcMain.handle('copyText', (event, text) => {
+    clipboard.writeText(text);
+    return true;
   });
 
   ipcMain.handle('openExternal', (event, url) => {

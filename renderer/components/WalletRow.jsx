@@ -18,7 +18,7 @@ import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import copy2Clipboard from 'copy-to-clipboard';
 import { formatToDollar } from '../utils/format';
-import { getPrivateKey, deleteWallet, promptInput, openExternal, renameWallet } from '../services/wallet';
+import { getPrivateKey, deleteWallet, promptInput, openExternal, renameWallet, copyText } from '../services/wallet';
 import { MONO_FONT, ACCENT } from '../theme';
 
 export default function WalletRow({ wallet, balance, index, onRefresh, onMessage, isDefault, onSetDefault }) {
@@ -48,8 +48,14 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
   const handleCopyPrivateKey = async () => {
     try {
       const pk = await getPrivateKey(address);
-      if (pk && copy2Clipboard(pk)) {
+      if (pk) {
+        // IPC clipboard, not copy2Clipboard: execCommand('copy') needs a live
+        // user-activation, which has expired after the TouchID/keychain wait
+        // (and the library's fallback calls window.prompt, unsupported here).
+        await copyText(pk);
         onMessage('Private Key Copied');
+        // Reading the pk heals a migrated placeholder name in the index.
+        onRefresh();
       }
     } catch (error) {
       onMessage('Error reading private key: ' + error.message);

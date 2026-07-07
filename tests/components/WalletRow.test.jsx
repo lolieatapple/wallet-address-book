@@ -66,16 +66,25 @@ describe('WalletRow', () => {
     expect(onMessage).toHaveBeenCalledWith('Address Copied');
   });
 
-  test('copy private key button fetches pk and copies', async () => {
+  test('copy private key copies via main-process clipboard, not execCommand', async () => {
     const onMessage = mock(() => {});
-    renderRow({ onMessage });
+    const onRefresh = mock(() => {});
+    renderRow({ onMessage, onRefresh });
 
     const pkBtn = screen.getByLabelText('Copy Private Key');
     await act(async () => pkBtn.click());
 
     expect(walletServiceMocks.getPrivateKey).toHaveBeenCalledWith('0xTestAddress123');
-    expect(clipboardMock.copy).toHaveBeenCalledWith('0xpk123');
+    // Must go through the IPC clipboard: document.execCommand('copy') needs a
+    // live user-activation, which expires during the TouchID/keychain wait,
+    // and copy-to-clipboard's fallback calls window.prompt (unsupported in
+    // Electron renderers).
+    expect(walletServiceMocks.copyText).toHaveBeenCalledWith('0xpk123');
+    expect(clipboardMock.copy).not.toHaveBeenCalled();
     expect(onMessage).toHaveBeenCalledWith('Private Key Copied');
+    // Reading the pk heals a migrated placeholder name in the index, so the
+    // row refreshes to pick it up.
+    expect(onRefresh).toHaveBeenCalled();
   });
 
   test('edit name prompts and renames via index (no keychain write)', async () => {

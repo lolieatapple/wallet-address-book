@@ -42,4 +42,6 @@ mock.module(walletServicePath, () => ({
   setDefaultWallet: (...args) => m.walletService.setDefaultWallet(...args),
   openExternal: (...args) => m.walletService.openExternal(...args),
   renameWallet: (...args) => m.walletService.renameWallet(...args),
+  copyText: (...args) => m.walletService.copyText(...args),
+  restoreNames: (...args) => m.walletService.restoreNames(...args),
 }));

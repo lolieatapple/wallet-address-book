@@ -18,6 +18,8 @@ if (!globalThis.__testMocks) {
       setDefaultWallet: mock(() => Promise.resolve(true)),
       openExternal: mock(() => Promise.resolve()),
       renameWallet: mock(() => Promise.resolve(true)),
+      copyText: mock(() => Promise.resolve(true)),
+      restoreNames: mock(() => Promise.resolve({ pending: 0, restored: 0 })),
     },
     clipboard: {
       copy: mock(() => true),

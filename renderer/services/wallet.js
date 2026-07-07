@@ -49,3 +49,16 @@ export async function setDefaultWallet(address) {
 export async function openExternal(url) {
   return window.walletApi.openExternal(url);
 }
+
+// Main-process clipboard write. document.execCommand('copy') requires a live
+// user-activation, which expires during the TouchID/keychain wait of a
+// private-key read; the IPC clipboard has no such constraint.
+export async function copyText(text) {
+  return window.walletApi.copyText(text);
+}
+
+// Bulk-restores migrated placeholder names from the keychain.
+// Returns { pending, restored }.
+export async function restoreNames() {
+  return window.walletApi.restoreNames();
+}

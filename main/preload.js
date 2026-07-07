@@ -15,4 +15,6 @@ contextBridge.exposeInMainWorld('walletApi', {
   getDefaultWallet: () => ipcRenderer.invoke('getDefaultWallet'),
   setDefaultWallet: (address) => ipcRenderer.invoke('setDefaultWallet', address),
   openExternal: (url) => ipcRenderer.invoke('openExternal', url),
+  copyText: (text) => ipcRenderer.invoke('copyText', text),
+  restoreNames: () => ipcRenderer.invoke('restoreNames'),
 });
