@@ -3,4 +3,5 @@ node_modules
 .next
 app
 dist
-.DS_Storerenderer/out/
+.DS_Store
+renderer/out/

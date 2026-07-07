@@ -1,9 +1,10 @@
-import { app, ipcMain, systemPreferences, nativeTheme } from 'electron';
+import { app, ipcMain, systemPreferences, nativeTheme, shell } from 'electron';
 import serve from 'electron-serve';
 import { createWindow } from './helpers';
 import keytar from 'keytar';
+import Store from 'electron-store';
 import { createBalanceCache } from './services/balance';
-import { startHttpApi, getDefaultAddress, setDefaultAddress } from './services/http-api';
+import { startHttpApi, stopHttpApi, getDefaultAddress, setDefaultAddress } from './services/http-api';
 const prompt = require('electron-prompt');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -14,7 +15,7 @@ if (isProd) {
   app.setPath('userData', `${app.getPath('userData')} (development)`);
 }
 
-const fetchBalance = createBalanceCache();
+const fetchBalance = createBalanceCache(undefined, new Store({ name: 'balance-cache' }));
 let mainWindow;
 
 (async () => {
@@ -33,55 +34,37 @@ let mainWindow;
     }
   });
 
+  // Errors are NOT swallowed here: a rejected handler propagates to the
+  // renderer's ipcRenderer.invoke, where the UI layer catches and displays it.
+
   ipcMain.handle('setPk', async (event, message) => {
-    try {
-      await keytar.setPassword('wallet-addr-book', message.address, message.json);
-      return true;
-    } catch (error) {
-      console.log(error);
-    }
-    return false;
+    await keytar.setPassword('wallet-addr-book', message.address, message.json);
+    return true;
   });
 
   ipcMain.handle('delPk', async (event, message) => {
-    try {
-      await systemPreferences.promptTouchID('Remove account: ' + message);
-      await keytar.deletePassword('wallet-addr-book', message);
-      return true;
-    } catch (error) {
-      console.log(error);
+    await systemPreferences.promptTouchID('Remove account: ' + message);
+    await keytar.deletePassword('wallet-addr-book', message);
+    // A stale default pointing at a deleted wallet would make the CLI/API
+    // hand out a dead address, so clear it in the same operation.
+    if (getDefaultAddress() === message) {
+      setDefaultAddress(null);
     }
-    return false;
+    return true;
   });
 
   ipcMain.handle('getPk', async (event, message) => {
-    try {
-      await systemPreferences.promptTouchID('Authenticate to read private key');
-      const ret = await keytar.getPassword('wallet-addr-book', message);
-      return ret;
-    } catch (error) {
-      console.log(error);
-      return false;
-    }
+    await systemPreferences.promptTouchID('Authenticate to read private key of ' + message);
+    return keytar.getPassword('wallet-addr-book', message);
   });
 
   ipcMain.handle('getAllPks', async () => {
-    try {
-      const ret = await keytar.findCredentials('wallet-addr-book');
-      return ret;
-    } catch (error) {
-      console.log(error);
-    }
-    return false;
+    return keytar.findCredentials('wallet-addr-book');
   });
 
   ipcMain.handle('getBalance', async (event, message) => {
-    try {
-      return await fetchBalance(message);
-    } catch (error) {
-      console.log(error);
-    }
-    return false;
+    // fetchBalance handles network errors internally (stale cache fallback)
+    return fetchBalance(message);
   });
 
   ipcMain.handle('dark-mode:toggle', () => {
@@ -95,6 +78,13 @@ let mainWindow;
 
   ipcMain.handle('prompt', async (e, v) => {
     return await prompt(v);
+  });
+
+  ipcMain.handle('openExternal', (event, url) => {
+    if (!/^https:\/\//.test(url)) {
+      throw new Error('Only https URLs are allowed: ' + url);
+    }
+    return shell.openExternal(url);
   });
 
   ipcMain.handle('getDefaultWallet', () => {
@@ -131,4 +121,5 @@ app.on('window-all-closed', () => {
 // Allow actual quit from dock menu / Cmd+Q
 app.on('before-quit', () => {
   app.isQuitting = true;
+  stopHttpApi();
 });

@@ -5,7 +5,6 @@ import {
   Box,
   Typography,
   IconButton,
-  Chip,
   Tooltip,
   useTheme,
   alpha,
@@ -19,9 +18,8 @@ import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import copy2Clipboard from 'copy-to-clipboard';
 import { formatToDollar } from '../utils/format';
-import { getPrivateKey, saveWallet, deleteWallet, promptInput } from '../services/wallet';
-
-const { shell } = require('electron');
+import { getPrivateKey, saveWallet, deleteWallet, promptInput, openExternal } from '../services/wallet';
+import { MONO_FONT, ACCENT } from '../theme';
 
 export default function WalletRow({ wallet, balance, index, onRefresh, onMessage, isDefault, onSetDefault }) {
   const theme = useTheme();
@@ -30,10 +28,14 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
   const displayBalance = balance ? formatToDollar(balance.total_usd_value) : 'error';
 
   const handleEditName = async () => {
-    const name = await promptInput('Modify Name', 'Name', data.name);
-    if (name) {
-      await saveWallet(address, { ...data, name });
-      onRefresh();
+    try {
+      const name = await promptInput('Modify Name', 'Name', data.name);
+      if (name) {
+        await saveWallet(address, { ...data, name });
+        onRefresh();
+      }
+    } catch (error) {
+      onMessage('Error renaming wallet: ' + error.message);
     }
   };
 
@@ -44,41 +46,46 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
   };
 
   const handleCopyPrivateKey = async () => {
-    const pk = await getPrivateKey(address);
-    if (pk && copy2Clipboard(pk)) {
-      onMessage('Private Key Copied');
+    try {
+      const pk = await getPrivateKey(address);
+      if (pk && copy2Clipboard(pk)) {
+        onMessage('Private Key Copied');
+      }
+    } catch (error) {
+      onMessage('Error reading private key: ' + error.message);
     }
   };
 
   const handleDelete = async () => {
     if (confirm(`Are you sure you want to delete ${data.name}?`)) {
-      await deleteWallet(address);
-      onRefresh();
+      try {
+        await deleteWallet(address);
+        onRefresh();
+      } catch (error) {
+        onMessage('Error deleting wallet: ' + error.message);
+      }
     }
   };
 
   const handleOpenDebank = () => {
-    shell.openExternal('https://debank.com/profile/' + address);
+    openExternal('https://debank.com/profile/' + address);
   };
 
-  const rowBg = index % 2 === 0 ? alpha(theme.palette.primary.main, 0.05) : 'transparent';
+  const iconSx = { fontSize: '0.9rem', color: 'text.secondary' };
 
   return (
     <TableRow
       sx={{
-        backgroundColor: rowBg,
-        transition: 'all 0.2s ease',
+        '& td': { borderBottom: 1, borderColor: 'divider' },
         '&:hover': {
-          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-          transform: 'translateY(-2px)',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+          backgroundColor: alpha(theme.palette.text.primary, 0.04),
         },
       }}
     >
       <TableCell sx={{ padding: '4px 8px 4px 16px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            {index + 1}
+          <Typography sx={{ fontFamily: MONO_FONT, fontSize: '0.72rem', color: 'text.secondary' }}>
+            {String(index + 1).padStart(2, '0')}
           </Typography>
           <Tooltip title={isDefault ? 'Unset Default' : 'Set as Default'}>
             <IconButton
@@ -87,7 +94,7 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
               sx={{ p: 0.25 }}
             >
               {isDefault ? (
-                <StarIcon sx={{ fontSize: '1rem', color: 'warning.main' }} />
+                <StarIcon sx={{ fontSize: '1rem', color: ACCENT }} />
               ) : (
                 <StarBorderIcon sx={{ fontSize: '1rem', color: 'text.disabled' }} />
               )}
@@ -98,11 +105,11 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
 
       <TableCell sx={{ padding: '4px 16px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="body2" fontWeight="medium">
+          <Typography variant="body2" fontWeight={600} sx={{ letterSpacing: '0.01em' }}>
             {data.name}
           </Typography>
           <IconButton size="small" onClick={handleEditName} sx={{ ml: 1 }}>
-            <EditIcon fontSize="small" />
+            <EditIcon sx={iconSx} />
           </IconButton>
         </Box>
       </TableCell>
@@ -110,15 +117,11 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
       <TableCell sx={{ padding: '4px 16px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography
-            variant="body2"
-            fontFamily="monospace"
             sx={{
-              backgroundColor: alpha(theme.palette.background.paper, 0.5),
-              padding: '2px 6px',
-              borderRadius: '4px',
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              whiteSpace: 'nowrap',
+              fontFamily: MONO_FONT,
               fontSize: '0.75rem',
+              whiteSpace: 'nowrap',
+              color: 'text.primary',
             }}
           >
             {address}
@@ -126,17 +129,17 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
           <Box sx={{ display: 'flex', ml: 1 }}>
             <Tooltip title="Copy Address">
               <IconButton size="small" onClick={handleCopyAddress}>
-                <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+                <ContentCopyIcon sx={iconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Copy Private Key">
               <IconButton size="small" onClick={handleCopyPrivateKey}>
-                <VpnKeyIcon sx={{ fontSize: '0.875rem' }} />
+                <VpnKeyIcon sx={iconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete Account">
               <IconButton size="small" onClick={handleDelete}>
-                <DeleteOutlineIcon sx={{ fontSize: '0.875rem' }} color="error" />
+                <DeleteOutlineIcon sx={{ fontSize: '0.9rem' }} color="error" />
               </IconButton>
             </Tooltip>
           </Box>
@@ -145,16 +148,19 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
 
       <TableCell sx={{ padding: '4px 16px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Chip
-            label={displayBalance}
-            color={displayBalance === 'error' ? 'error' : 'success'}
-            variant="outlined"
-            size="small"
-            sx={{ fontWeight: 'bold' }}
-          />
+          <Typography
+            sx={{
+              fontFamily: MONO_FONT,
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: displayBalance === 'error' ? 'error.main' : 'text.primary',
+            }}
+          >
+            {displayBalance}
+          </Typography>
           <Tooltip title="Show In Debank">
             <IconButton size="small" onClick={handleOpenDebank} sx={{ ml: 1 }}>
-              <PublicIcon fontSize="small" />
+              <PublicIcon sx={iconSx} />
             </IconButton>
           </Tooltip>
         </Box>

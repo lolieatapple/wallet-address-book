@@ -11,18 +11,9 @@ import { mock } from 'bun:test';
 await import('./mocks.js');
 const m = globalThis.__testMocks;
 
-// Register all module mocks once
-mock.module('electron', () => ({
-  ipcRenderer: { invoke: (...args) => m.electron.invoke(...args) },
-  shell: { openExternal: (...args) => m.electron.openExternal(...args) },
-}));
-
-mock.module('darkreader', () => ({
-  isEnabled: () => false,
-  enable: () => {},
-  disable: () => {},
-}));
-
+// Register all module mocks once. The renderer is fully isolated
+// (contextIsolation) and never imports 'electron' directly — everything
+// goes through the wallet service, which is mocked below.
 mock.module('next/head', () => {
   const React = require('react');
   return {
@@ -49,4 +40,5 @@ mock.module(walletServicePath, () => ({
   toggleDarkMode: (...args) => m.walletService.toggleDarkMode(...args),
   getDefaultWallet: (...args) => m.walletService.getDefaultWallet(...args),
   setDefaultWallet: (...args) => m.walletService.setDefaultWallet(...args),
+  openExternal: (...args) => m.walletService.openExternal(...args),
 }));

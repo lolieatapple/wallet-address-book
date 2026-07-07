@@ -86,4 +86,67 @@ describe('createBalanceCache', () => {
     const result = await fetchBalance(['0xnew']);
     expect(result).toEqual({});
   });
+
+  describe('persistence via injected store', () => {
+    function makeFakeStore(initial = {}) {
+      const data = { ...initial };
+      return {
+        get: (key) => data[key],
+        set: (key, val) => { data[key] = val; },
+        _data: data,
+      };
+    }
+
+    test('persists successful results to the store', async () => {
+      const balanceData = { '0xa': { total_usd_value: 100 } };
+      mockPost.mockResolvedValueOnce({ data: balanceData });
+      const store = makeFakeStore();
+
+      const fetchBalance = createBalanceCache(60000, store);
+      await fetchBalance(['0xa']);
+
+      expect(store._data.cache['0xa'].data).toEqual(balanceData);
+      expect(store._data.cache['0xa'].timestamp).toBeGreaterThan(0);
+    });
+
+    test('serves persisted data from a previous run when API fails', async () => {
+      const previousRun = { '0xa': { total_usd_value: 123 } };
+      const store = makeFakeStore({
+        cache: { '0xa': { data: previousRun, timestamp: 1 } }, // long expired
+      });
+      mockPost.mockRejectedValueOnce(new Error('network error'));
+
+      const fetchBalance = createBalanceCache(60000, store);
+      const result = await fetchBalance(['0xa']);
+
+      expect(result).toEqual(previousRun);
+      expect(mockPost).toHaveBeenCalledTimes(1); // it did try to refresh first
+    });
+
+    test('failed fetch does not overwrite persisted data', async () => {
+      const previousRun = { '0xa': { total_usd_value: 123 } };
+      const store = makeFakeStore({
+        cache: { '0xa': { data: previousRun, timestamp: 1 } },
+      });
+      mockPost.mockRejectedValueOnce(new Error('network error'));
+
+      const fetchBalance = createBalanceCache(60000, store);
+      await fetchBalance(['0xa']);
+
+      expect(store._data.cache['0xa'].data).toEqual(previousRun);
+    });
+
+    test('fresh persisted data is served without hitting the API', async () => {
+      const previousRun = { '0xa': { total_usd_value: 55 } };
+      const store = makeFakeStore({
+        cache: { '0xa': { data: previousRun, timestamp: Date.now() } },
+      });
+
+      const fetchBalance = createBalanceCache(60000, store);
+      const result = await fetchBalance(['0xa']);
+
+      expect(result).toEqual(previousRun);
+      expect(mockPost).not.toHaveBeenCalled();
+    });
+  });
 });

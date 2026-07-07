@@ -73,9 +73,13 @@ jobs:
             exit 1
           fi
           awk -v team="$APPLE_TEAM_ID" '
-            /^mac:$/ { print; print "  notarize:"; print "    teamId: " team; next }
+            /^  notarize: false$/ { print "  notarize:"; print "    teamId: " team; next }
             { print }
           ' electron-builder.yml > electron-builder.yml.tmp && mv electron-builder.yml.tmp electron-builder.yml
+          if ! grep -q "teamId: $APPLE_TEAM_ID" electron-builder.yml; then
+            echo "::error::Failed to inject notarize teamId into electron-builder.yml"
+            exit 1
+          fi
           echo "--- electron-builder.yml ---"
           cat electron-builder.yml
 

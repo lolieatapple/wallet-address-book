@@ -1,5 +1,8 @@
 import { test, expect, describe, mock, beforeEach, afterAll } from 'bun:test';
 import http from 'http';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 // Mock electron and keytar before importing http-api
 const mockPromptTouchID = mock(() => Promise.resolve());
@@ -30,16 +33,16 @@ mock.module('electron-store', () => {
   };
 });
 
-const { startHttpApi, getDefaultAddress, setDefaultAddress } = await import(
+const { startHttpApi, stopHttpApi, getDefaultAddress, setDefaultAddress } = await import(
   '../../main/services/http-api'
 );
 
-const BASE = 'http://127.0.0.1:63333';
+const TEST_SOCKET = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wab-api-test-')), 'api.sock');
 
-// Use Node http.get to bypass happy-dom's CORS-enforcing fetch
-function get(path) {
+// Use Node http.get over the unix socket to bypass happy-dom's CORS-enforcing fetch
+function get(reqPath) {
   return new Promise((resolve, reject) => {
-    http.get(`${BASE}${path}`, (res) => {
+    http.get({ socketPath: TEST_SOCKET, path: reqPath }, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
@@ -50,8 +53,19 @@ function get(path) {
   });
 }
 
+const VALID_ADDR = '0x' + 'a1'.repeat(20);
+
 describe('HTTP API', () => {
-  startHttpApi();
+  const server = startHttpApi(TEST_SOCKET);
+  const ready = new Promise((resolve) => {
+    if (server.listening) resolve();
+    else server.once('listening', resolve);
+  });
+
+  afterAll(() => {
+    stopHttpApi();
+    fs.rmSync(path.dirname(TEST_SOCKET), { recursive: true, force: true });
+  });
 
   beforeEach(() => {
     mockPromptTouchID.mockReset();
@@ -59,6 +73,12 @@ describe('HTTP API', () => {
     mockFindCredentials.mockReset();
     mockPromptTouchID.mockResolvedValue();
     setDefaultAddress(null);
+  });
+
+  test('socket file is created with 0600 permissions', async () => {
+    await ready;
+    const mode = fs.statSync(TEST_SOCKET).mode & 0o777;
+    expect(mode).toBe(0o600);
   });
 
   describe('GET /default/address', () => {
@@ -92,6 +112,15 @@ describe('HTTP API', () => {
       expect(mockPromptTouchID).toHaveBeenCalled();
     });
 
+    test('returns 404 when default wallet is missing from keychain', async () => {
+      setDefaultAddress('0xDeleted');
+      mockGetPassword.mockResolvedValueOnce(null);
+
+      const { status, body } = await get('/default/pk');
+      expect(status).toBe(404);
+      expect(body.error).toMatch(/not found/);
+    });
+
     test('returns 403 when TouchID denied', async () => {
       setDefaultAddress('0xAddr');
       mockPromptTouchID.mockRejectedValueOnce(new Error('User denied'));
@@ -99,6 +128,24 @@ describe('HTTP API', () => {
       const { status, body } = await get('/default/pk');
       expect(status).toBe(403);
       expect(body.error).toMatch(/Authentication failed/);
+    });
+  });
+
+  describe('GET /wallet/:address/pk', () => {
+    test('returns private key by address after TouchID', async () => {
+      mockGetPassword.mockResolvedValueOnce(JSON.stringify({ pk: '0xPK9', name: 'X' }));
+
+      const { status, body } = await get(`/wallet/${VALID_ADDR}/pk`);
+      expect(status).toBe(200);
+      expect(body.address).toBe(VALID_ADDR);
+      expect(body.privateKey).toBe('0xPK9');
+      expect(mockPromptTouchID).toHaveBeenCalledWith(expect.stringContaining(VALID_ADDR));
+    });
+
+    test('returns 404 for unknown address', async () => {
+      mockGetPassword.mockResolvedValueOnce(null);
+      const { status } = await get(`/wallet/${VALID_ADDR}/pk`);
+      expect(status).toBe(404);
     });
   });
 
@@ -131,7 +178,7 @@ describe('HTTP API', () => {
   });
 
   describe('GET /wallet/:index/pk', () => {
-    test('returns private key by index after TouchID', async () => {
+    test('returns private key by index after TouchID, prompt includes address', async () => {
       mockFindCredentials.mockResolvedValueOnce([
         { account: '0xAddr1', password: '{"name":"A","pk":"0x1"}' },
       ]);
@@ -141,7 +188,7 @@ describe('HTTP API', () => {
       expect(status).toBe(200);
       expect(body.address).toBe('0xAddr1');
       expect(body.privateKey).toBe('0xPK1');
-      expect(mockPromptTouchID).toHaveBeenCalled();
+      expect(mockPromptTouchID).toHaveBeenCalledWith(expect.stringContaining('0xAddr1'));
     });
 
     test('returns 403 when TouchID denied', async () => {

@@ -6,10 +6,6 @@ import { mock } from 'bun:test';
 
 if (!globalThis.__testMocks) {
   globalThis.__testMocks = {
-    electron: {
-      invoke: mock(() => Promise.resolve(null)),
-      openExternal: mock(() => {}),
-    },
     walletService: {
       getAllWallets: mock(() => Promise.resolve([])),
       saveWallet: mock(() => Promise.resolve(true)),
@@ -20,6 +16,7 @@ if (!globalThis.__testMocks) {
       toggleDarkMode: mock(() => Promise.resolve()),
       getDefaultWallet: mock(() => Promise.resolve(null)),
       setDefaultWallet: mock(() => Promise.resolve(true)),
+      openExternal: mock(() => Promise.resolve()),
     },
     clipboard: {
       copy: mock(() => true),
@@ -27,12 +24,10 @@ if (!globalThis.__testMocks) {
   };
 }
 
-export const electronMocks = globalThis.__testMocks.electron;
 export const walletServiceMocks = globalThis.__testMocks.walletService;
 export const clipboardMock = globalThis.__testMocks.clipboard;
 
 export function resetAllMocks() {
-  Object.values(electronMocks).forEach((m) => m.mockReset());
   Object.values(walletServiceMocks).forEach((m) => m.mockReset());
   clipboardMock.copy.mockReset();
   clipboardMock.copy.mockReturnValue(true);

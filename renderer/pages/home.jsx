@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import Head from 'next/head';
-import { Box, Container, GlobalStyles, useTheme, alpha } from '@mui/material';
+import { Box, Container, GlobalStyles } from '@mui/material';
 import WalletToolbar from '../components/WalletToolbar';
 import WalletTable from '../components/WalletTable';
 import { MessageBox } from '../components/message';
 import { useWallets } from '../hooks/useWallets';
+import { ACCENT } from '../theme';
 
 export default function Home() {
-  const theme = useTheme();
   const { wallets, balances, isLoading, refresh, defaultAddress, setDefault } = useWallets();
   const [successInfo, setSuccessInfo] = useState('');
   const [filter, setFilter] = useState('');
@@ -21,11 +21,6 @@ export default function Home() {
     });
   }, [wallets, filter]);
 
-  const bgGradient =
-    theme.palette.mode === 'dark'
-      ? `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.primary.dark, 0.2)} 100%)`
-      : `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.primary.light, 0.2)} 100%)`;
-
   return (
     <>
       <Head>
@@ -34,7 +29,17 @@ export default function Home() {
 
       <GlobalStyles styles={{ body: { overflow: 'hidden' } }} />
 
-      <Box sx={{ minHeight: '100vh', background: bgGradient, pt: 3, pb: 6 }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+          // The single colored element of the chrome: a thin amber signal
+          // line across the top of the window.
+          borderTop: `3px solid ${ACCENT}`,
+          pt: 3,
+          pb: 6,
+        }}
+      >
         <Container maxWidth="lg">
           <WalletToolbar
             filter={filter}

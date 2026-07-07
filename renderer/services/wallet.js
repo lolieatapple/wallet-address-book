@@ -1,43 +1,46 @@
-const { ipcRenderer } = require('electron');
+// All main-process access goes through window.walletApi, the whitelist
+// exposed by main/preload.js via contextBridge (contextIsolation is on,
+// so the renderer has no direct Node/Electron access).
 
 export async function getAllWallets() {
-  const credentials = await ipcRenderer.invoke('getAllPks');
+  const credentials = await window.walletApi.getAllPks();
   return credentials || [];
 }
 
 export async function saveWallet(address, data) {
-  return ipcRenderer.invoke('setPk', {
-    address,
-    json: JSON.stringify(data),
-  });
+  return window.walletApi.setPk(address, JSON.stringify(data));
 }
 
 export async function deleteWallet(address) {
-  return ipcRenderer.invoke('delPk', address);
+  return window.walletApi.delPk(address);
 }
 
 export async function getPrivateKey(address) {
-  const raw = await ipcRenderer.invoke('getPk', address);
+  const raw = await window.walletApi.getPk(address);
   if (!raw) return null;
   return JSON.parse(raw).pk;
 }
 
 export async function fetchBalances(addresses) {
-  return ipcRenderer.invoke('getBalance', addresses);
+  return window.walletApi.getBalance(addresses);
 }
 
 export async function promptInput(title, label, value = '') {
-  return ipcRenderer.invoke('prompt', { title, label, value, type: 'input' });
+  return window.walletApi.prompt({ title, label, value, type: 'input' });
 }
 
 export async function toggleDarkMode() {
-  return ipcRenderer.invoke('dark-mode:toggle');
+  return window.walletApi.toggleDarkMode();
 }
 
 export async function getDefaultWallet() {
-  return ipcRenderer.invoke('getDefaultWallet');
+  return window.walletApi.getDefaultWallet();
 }
 
 export async function setDefaultWallet(address) {
-  return ipcRenderer.invoke('setDefaultWallet', address);
+  return window.walletApi.setDefaultWallet(address);
+}
+
+export async function openExternal(url) {
+  return window.walletApi.openExternal(url);
 }

@@ -1,11 +1,15 @@
 import http from 'http';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { systemPreferences } from 'electron';
 import keytar from 'keytar';
 import Store from 'electron-store';
 
 const store = new Store({ name: 'default-wallet' });
 const SERVICE_NAME = 'wallet-addr-book';
-const PORT = 63333;
+const SOCKET_DIR = path.join(os.homedir(), '.wallet-address-book');
+const SOCKET_PATH = path.join(SOCKET_DIR, 'api.sock');
 
 let server = null;
 
@@ -26,7 +30,7 @@ async function getPrivateKeyWithAuth(address, purpose) {
 }
 
 async function handleRequest(req, res) {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const url = new URL(req.url, 'http://localhost');
   const path = url.pathname;
 
   if (req.method !== 'GET') {
@@ -50,9 +54,23 @@ async function handleRequest(req, res) {
       if (!addr) {
         return jsonResponse(res, 404, { error: 'No default wallet set' });
       }
-      const pk = await getPrivateKeyWithAuth(addr, 'API: Read default private key');
+      const pk = await getPrivateKeyWithAuth(addr, `API: Read private key of default wallet ${addr}`);
+      if (!pk) {
+        return jsonResponse(res, 404, { error: `Default wallet ${addr} not found in keychain` });
+      }
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       return res.end(pk);
+    }
+
+    // GET /wallet/:address/pk — address-based, immune to index shifts
+    const addrPkMatch = path.match(/^\/wallet\/(0x[0-9a-fA-F]{40})\/pk$/);
+    if (addrPkMatch) {
+      const address = addrPkMatch[1];
+      const pk = await getPrivateKeyWithAuth(address, `API: Read private key of ${address}`);
+      if (!pk) {
+        return jsonResponse(res, 404, { error: `Wallet ${address} not found` });
+      }
+      return jsonResponse(res, 200, { address, privateKey: pk });
     }
 
     // GET /wallet/:index/address
@@ -75,7 +93,12 @@ async function handleRequest(req, res) {
         return jsonResponse(res, 404, { error: `Wallet #${idx} not found. Total: ${creds.length}` });
       }
       const address = creds[idx - 1].account;
-      const pk = await getPrivateKeyWithAuth(address, `API: Read private key for wallet #${idx}`);
+      // Show the full address in the TouchID prompt so the user can verify
+      // which key is being read — the index alone can shift between calls.
+      const pk = await getPrivateKeyWithAuth(address, `API: Read private key for wallet #${idx} (${address})`);
+      if (!pk) {
+        return jsonResponse(res, 404, { error: `Wallet ${address} not found` });
+      }
       return jsonResponse(res, 200, { index: idx, address, privateKey: pk });
     }
 
@@ -102,11 +125,31 @@ async function handleRequest(req, res) {
   }
 }
 
-export function startHttpApi() {
+export function startHttpApi(socketPath = SOCKET_PATH) {
+  // Unix domain socket instead of a TCP port: browsers cannot reach it
+  // (no DNS-rebinding/CSRF surface) and the 0600 file mode restricts
+  // access to the current user.
+  fs.mkdirSync(path.dirname(socketPath), { recursive: true, mode: 0o700 });
+  if (fs.existsSync(socketPath)) {
+    fs.unlinkSync(socketPath);
+  }
+
   server = http.createServer(handleRequest);
-  server.listen(PORT, '127.0.0.1', () => {
-    console.log(`HTTP API listening on http://127.0.0.1:${PORT}`);
+  server.on('error', (err) => {
+    console.error('HTTP API server error:', err);
   });
+  server.listen(socketPath, () => {
+    fs.chmodSync(socketPath, 0o600);
+    console.log(`HTTP API listening on unix socket ${socketPath}`);
+  });
+  return server;
+}
+
+export function stopHttpApi() {
+  if (server) {
+    server.close();
+    server = null;
+  }
 }
 
 export function getDefaultAddress() {

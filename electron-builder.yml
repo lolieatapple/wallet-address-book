@@ -10,6 +10,9 @@ files:
       - package.json
       - app
 mac:
+  # Local builds skip notarization; the release workflow rewrites this
+  # line into a teamId block (see .github/workflows/release.yml).
+  notarize: false
   category: public.app-category.utilities
   artifactName: Wallet-Address-Book-${version}-${arch}.${ext}
   hardenedRuntime: true

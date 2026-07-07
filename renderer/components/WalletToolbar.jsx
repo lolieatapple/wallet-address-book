@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  Paper,
-  Box,
-  Button,
-  TextField,
-  useTheme,
-  alpha,
-} from '@mui/material';
+import { Paper, Box, Button, TextField } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import SearchIcon from '@mui/icons-material/Search';
@@ -14,16 +7,19 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DarkModeButton from './DarkModeButton';
 import { ethers } from 'ethers';
 import { saveWallet, promptInput } from '../services/wallet';
+import { MONO_FONT } from '../theme';
 
 export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMessage }) {
-  const theme = useTheme();
-
   const handleCreate = async () => {
-    const wallet = ethers.Wallet.createRandom();
-    const name = 'Account_' + new Date().toISOString().split('.')[0];
-    await saveWallet(wallet.address, { name, pk: wallet.privateKey });
-    onRefresh();
-    onMessage('New wallet created successfully!');
+    try {
+      const wallet = ethers.Wallet.createRandom();
+      const name = 'Account_' + new Date().toISOString().split('.')[0];
+      await saveWallet(wallet.address, { name, pk: wallet.privateKey });
+      onRefresh();
+      onMessage('New wallet created successfully!');
+    } catch (error) {
+      onMessage('Error creating wallet: ' + error.message);
+    }
   };
 
   const handleImport = async () => {
@@ -42,20 +38,7 @@ export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMes
   };
 
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        p: 3,
-        borderRadius: 3,
-        mb: 3,
-        background: alpha(theme.palette.background.paper, 0.8),
-        backdropFilter: 'blur(10px)',
-        boxShadow:
-          theme.palette.mode === 'dark'
-            ? '0 8px 32px rgba(0, 0, 0, 0.3)'
-            : '0 8px 32px rgba(0, 0, 0, 0.1)',
-      }}
-    >
+    <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <TextField
           fullWidth
@@ -67,10 +50,11 @@ export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMes
             flexGrow: 1,
             minWidth: '250px',
             maxWidth: '500px',
-            '& .MuiOutlinedInput-root': { borderRadius: 2 },
+            '& .MuiOutlinedInput-root': { borderRadius: 0, fontFamily: MONO_FONT, fontSize: '0.85rem' },
+            '& .MuiInputLabel-root': { letterSpacing: '0.04em' },
           }}
           InputProps={{
-            startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
+            startAdornment: <SearchIcon color="action" sx={{ mr: 1, fontSize: 18 }} />,
           }}
         />
 
@@ -80,7 +64,6 @@ export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMes
             color="primary"
             startIcon={<AddCircleOutlineIcon />}
             onClick={handleCreate}
-            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
           >
             Create New
           </Button>
@@ -89,16 +72,14 @@ export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMes
             color="primary"
             startIcon={<FileUploadIcon />}
             onClick={handleImport}
-            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
           >
             Import
           </Button>
           <Button
             variant="outlined"
-            color="secondary"
+            color="primary"
             startIcon={<RefreshIcon />}
             onClick={onRefresh}
-            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
           >
             Refresh
           </Button>

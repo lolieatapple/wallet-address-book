@@ -9,30 +9,28 @@ import {
   TableCell,
   TableBody,
   TableContainer,
-  useTheme,
-  alpha,
 } from '@mui/material';
 import WalletRow from './WalletRow';
+import { MONO_FONT } from '../theme';
+
+const headCellSx = {
+  fontFamily: MONO_FONT,
+  fontSize: '0.65rem',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.14em',
+  color: 'text.secondary',
+  borderBottom: 2,
+  borderColor: 'text.primary',
+  padding: '10px 16px',
+  bgcolor: 'background.paper',
+};
 
 export default function WalletTable({ wallets, balances, isLoading, onRefresh, onMessage, defaultAddress, onSetDefault }) {
-  const theme = useTheme();
-
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        borderRadius: 3,
-        overflow: 'hidden',
-        background: alpha(theme.palette.background.paper, 0.8),
-        backdropFilter: 'blur(10px)',
-        boxShadow:
-          theme.palette.mode === 'dark'
-            ? '0 8px 32px rgba(0, 0, 0, 0.3)'
-            : '0 8px 32px rgba(0, 0, 0, 0.1)',
-      }}
-    >
-      <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-        <Typography variant="h6" fontWeight="medium">
+    <Paper variant="outlined" sx={{ borderColor: 'divider', overflow: 'hidden' }}>
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'baseline', gap: 1 }}>
+        <Typography variant="h6">
           Your Wallets {wallets.length > 0 && `(${wallets.length})`}
         </Typography>
       </Box>
@@ -41,31 +39,27 @@ export default function WalletTable({ wallets, balances, isLoading, onRefresh, o
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold', width: '5%', padding: '8px 16px' }}>
-                #
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', width: '18%', padding: '8px 16px' }}>
-                Name
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', width: '57%', padding: '8px 16px' }}>
-                Address
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', width: '20%', padding: '8px 16px' }}>
-                Balance
-              </TableCell>
+              <TableCell sx={{ ...headCellSx, width: '5%' }}>#</TableCell>
+              <TableCell sx={{ ...headCellSx, width: '18%' }}>Name</TableCell>
+              <TableCell sx={{ ...headCellSx, width: '57%' }}>Address</TableCell>
+              <TableCell sx={{ ...headCellSx, width: '20%' }}>Balance</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                  <Typography>Loading wallets...</Typography>
+                  <Typography sx={{ fontFamily: MONO_FONT, fontSize: '0.8rem', color: 'text.secondary' }}>
+                    Loading wallets...
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : wallets.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                  <Typography>No wallets found. Create or import a wallet to get started.</Typography>
+                  <Typography sx={{ fontFamily: MONO_FONT, fontSize: '0.8rem', color: 'text.secondary' }}>
+                    No wallets found. Create or import a wallet to get started.
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (

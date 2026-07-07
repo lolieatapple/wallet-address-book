@@ -2,6 +2,7 @@ import {
   screen,
   BrowserWindow,
 } from 'electron';
+import path from 'path';
 import Store from 'electron-store';
 
 export default function createWindow(windowName, options) {
@@ -70,8 +71,9 @@ export default function createWindow(windowName, options) {
     ...options,
     ...state,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
       ...options.webPreferences,
     },
   });

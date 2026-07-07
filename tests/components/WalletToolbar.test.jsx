@@ -69,6 +69,22 @@ describe('WalletToolbar', () => {
     expect(onMessage).toHaveBeenCalledWith('New wallet created successfully!');
   });
 
+  test('create shows error (not success) when keychain save fails', async () => {
+    const onRefresh = mock(() => {});
+    const onMessage = mock(() => {});
+    walletServiceMocks.saveWallet.mockRejectedValueOnce(new Error('keychain locked'));
+
+    render(
+      <WalletToolbar filter="" onFilterChange={() => {}} onRefresh={onRefresh} onMessage={onMessage} />
+    );
+
+    await act(async () => screen.getByText('Create New').click());
+
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0]).toBe('Error creating wallet: keychain locked');
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   test('import does nothing when user cancels prompt', async () => {
     const onRefresh = mock(() => {});
     walletServiceMocks.promptInput.mockResolvedValueOnce(null);
