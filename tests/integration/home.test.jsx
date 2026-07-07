@@ -24,6 +24,31 @@ describe('Home page integration', () => {
     walletServiceMocks.saveWallet.mockResolvedValue(true);
   });
 
+  test('app-menu restore-names command runs restore and shows the result', async () => {
+    walletServiceMocks.getAllWallets.mockResolvedValue(WALLETS);
+    walletServiceMocks.fetchBalances.mockResolvedValue(BALANCES);
+    walletServiceMocks.restoreNames.mockResolvedValueOnce({ pending: 3, restored: 2 });
+
+    let menuHandler;
+    walletServiceMocks.onRestoreNamesRequested.mockImplementation((handler) => {
+      menuHandler = handler;
+      return () => {};
+    });
+
+    await act(async () => {
+      render(<Home />);
+    });
+
+    // The toolbar must NOT carry this rarely-used action.
+    expect(screen.queryByText('Restore Names')).toBeNull();
+
+    // Simulate the app-menu click event arriving from the main process.
+    await act(async () => menuHandler());
+
+    expect(walletServiceMocks.restoreNames).toHaveBeenCalled();
+    expect(screen.getByText('Restored 2 of 3 wallet names')).toBeTruthy();
+  });
+
   test('renders full page with wallets', async () => {
     walletServiceMocks.getAllWallets.mockResolvedValueOnce(WALLETS);
     walletServiceMocks.fetchBalances.mockResolvedValueOnce(BALANCES);

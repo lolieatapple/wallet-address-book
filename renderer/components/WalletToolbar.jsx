@@ -4,10 +4,9 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import RestoreIcon from '@mui/icons-material/Restore';
 import DarkModeButton from './DarkModeButton';
 import { ethers } from 'ethers';
-import { saveWallet, promptInput, restoreNames } from '../services/wallet';
+import { saveWallet, promptInput } from '../services/wallet';
 import { MONO_FONT } from '../theme';
 
 export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMessage }) {
@@ -35,22 +34,6 @@ export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMes
       onMessage('Wallet imported successfully!');
     } catch (error) {
       onMessage('Error importing wallet: ' + error.message);
-    }
-  };
-
-  const handleRestoreNames = async () => {
-    try {
-      // One keychain ACL dialog per un-restored wallet; "Always Allow"
-      // permanently silences future prompts for that wallet.
-      const { pending, restored } = await restoreNames();
-      onRefresh();
-      onMessage(pending === 0
-        ? 'No wallet names need restoring'
-        : `Restored ${restored} of ${pending} wallet names`);
-    } catch (error) {
-      // A denied prompt aborts the run but already-restored names are kept.
-      onRefresh();
-      onMessage('Error restoring names: ' + error.message);
     }
   };
 
@@ -99,14 +82,6 @@ export default function WalletToolbar({ filter, onFilterChange, onRefresh, onMes
             onClick={onRefresh}
           >
             Refresh
-          </Button>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<RestoreIcon />}
-            onClick={handleRestoreNames}
-          >
-            Restore Names
           </Button>
           <DarkModeButton />
         </Box>

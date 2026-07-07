@@ -20,6 +20,7 @@ if (!globalThis.__testMocks) {
       renameWallet: mock(() => Promise.resolve(true)),
       copyText: mock(() => Promise.resolve(true)),
       restoreNames: mock(() => Promise.resolve({ pending: 0, restored: 0 })),
+      onRestoreNamesRequested: mock(() => () => {}),
     },
     clipboard: {
       copy: mock(() => true),

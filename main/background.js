@@ -1,4 +1,4 @@
-import { app, ipcMain, systemPreferences, nativeTheme, shell, clipboard } from 'electron';
+import { app, ipcMain, systemPreferences, nativeTheme, shell, clipboard, Menu } from 'electron';
 import serve from 'electron-serve';
 import { createWindow } from './helpers';
 import keytar from 'keytar';
@@ -27,6 +27,30 @@ let mainWindow;
     width: 1200,
     height: 800,
   });
+
+  // Standard menus plus a Wallet menu for rarely-used commands that don't
+  // deserve toolbar space. The menu item only signals the renderer — the
+  // restore flow itself runs through the same 'restoreNames' IPC as before,
+  // so the result lands in the UI's message box.
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { role: 'appMenu' },
+    { role: 'fileMenu' },
+    { role: 'editMenu' },
+    {
+      label: 'Wallet',
+      submenu: [
+        {
+          label: 'Restore Names from Keychain',
+          click: () => {
+            mainWindow.show();
+            mainWindow.webContents.send('menu:restore-names');
+          },
+        },
+      ],
+    },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' },
+  ]));
 
   // Hide to tray instead of quitting on close
   mainWindow.on('close', (e) => {

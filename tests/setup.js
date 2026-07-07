@@ -44,4 +44,5 @@ mock.module(walletServicePath, () => ({
   renameWallet: (...args) => m.walletService.renameWallet(...args),
   copyText: (...args) => m.walletService.copyText(...args),
   restoreNames: (...args) => m.walletService.restoreNames(...args),
+  onRestoreNamesRequested: (...args) => m.walletService.onRestoreNamesRequested(...args),
 }));

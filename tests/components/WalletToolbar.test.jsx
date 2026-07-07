@@ -39,38 +39,6 @@ describe('WalletToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith('test');
   });
 
-  test('restore names button reports result and refreshes', async () => {
-    const onRefresh = mock(() => {});
-    const onMessage = mock(() => {});
-    walletServiceMocks.restoreNames.mockResolvedValueOnce({ pending: 3, restored: 2 });
-
-    render(
-      <WalletToolbar filter="" onFilterChange={() => {}} onRefresh={onRefresh} onMessage={onMessage} />
-    );
-
-    await act(async () => screen.getByText('Restore Names').click());
-
-    expect(walletServiceMocks.restoreNames).toHaveBeenCalled();
-    expect(onMessage).toHaveBeenCalledWith('Restored 2 of 3 wallet names');
-    expect(onRefresh).toHaveBeenCalled();
-  });
-
-  test('restore names button surfaces a denied prompt but still refreshes', async () => {
-    const onRefresh = mock(() => {});
-    const onMessage = mock(() => {});
-    walletServiceMocks.restoreNames.mockRejectedValueOnce(new Error('denied'));
-
-    render(
-      <WalletToolbar filter="" onFilterChange={() => {}} onRefresh={onRefresh} onMessage={onMessage} />
-    );
-
-    await act(async () => screen.getByText('Restore Names').click());
-
-    expect(onMessage).toHaveBeenCalledWith('Error restoring names: denied');
-    // Names restored before the denial are persisted — show them.
-    expect(onRefresh).toHaveBeenCalled();
-  });
-
   test('refresh button calls onRefresh', () => {
     const onRefresh = mock(() => {});
     render(

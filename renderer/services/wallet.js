@@ -62,3 +62,9 @@ export async function copyText(text) {
 export async function restoreNames() {
   return window.walletApi.restoreNames();
 }
+
+// Subscribes to the app-menu "Restore Names from Keychain" command.
+// Returns an unsubscribe function.
+export function onRestoreNamesRequested(handler) {
+  return window.walletApi.onRestoreNamesRequested(handler);
+}

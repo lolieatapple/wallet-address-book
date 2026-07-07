@@ -17,4 +17,10 @@ contextBridge.exposeInMainWorld('walletApi', {
   openExternal: (url) => ipcRenderer.invoke('openExternal', url),
   copyText: (text) => ipcRenderer.invoke('copyText', text),
   restoreNames: () => ipcRenderer.invoke('restoreNames'),
+  // Menu-bar "Restore Names" command; returns an unsubscribe function.
+  onRestoreNamesRequested: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('menu:restore-names', listener);
+    return () => ipcRenderer.removeListener('menu:restore-names', listener);
+  },
 });
