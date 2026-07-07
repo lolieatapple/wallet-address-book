@@ -5,7 +5,7 @@ import path from 'path';
 import { systemPreferences } from 'electron';
 import keytar from 'keytar';
 import Store from 'electron-store';
-import { getWalletList } from './wallet-index';
+import { getWalletList, healWalletName } from './wallet-index';
 
 const store = new Store({ name: 'default-wallet' });
 const SERVICE_NAME = 'wallet-addr-book';
@@ -23,7 +23,11 @@ async function getPrivateKeyWithAuth(address, purpose) {
   await systemPreferences.promptTouchID(purpose);
   const raw = await keytar.getPassword(SERVICE_NAME, address);
   if (!raw) return null;
-  return JSON.parse(raw).pk;
+  const parsed = JSON.parse(raw);
+  // The secret is decrypted anyway — use its name to replace a migration
+  // placeholder in the index (no extra keychain access, no extra prompt).
+  healWalletName(address, parsed.name);
+  return parsed.pk;
 }
 
 async function handleRequest(req, res) {

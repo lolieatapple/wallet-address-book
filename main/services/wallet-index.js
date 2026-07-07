@@ -1,5 +1,5 @@
 import Store from 'electron-store';
-import keytar from 'keytar';
+import { listKeychainAccounts } from './keychain-list';
 
 const SERVICE_NAME = 'wallet-addr-book';
 const store = new Store({ name: 'wallet-index' });
@@ -14,13 +14,15 @@ export async function getWalletList() {
   if (list !== undefined) {
     return list;
   }
-  // One-time migration for installs that predate the index: enumerate the
-  // keychain once (this prompts once per item) and persist the result.
-  const creds = (await keytar.findCredentials(SERVICE_NAME)) || [];
-  const migrated = creds.map((c) => ({
-    address: c.account,
-    name: JSON.parse(c.password).name,
-  }));
+  // One-time migration for installs that predate the index. Reads keychain
+  // item ATTRIBUTES only — decrypting secrets (keytar.findCredentials) pops
+  // one macOS password prompt per item, and a single denied prompt aborted
+  // the migration so it re-ran (and re-prompted) on every launch. Attribute
+  // reads never prompt. The wallet name lives inside the encrypted secret,
+  // so migrated entries default to the address; renaming in the UI only
+  // touches this index.
+  const accounts = await listKeychainAccounts(SERVICE_NAME);
+  const migrated = accounts.map((address) => ({ address, name: address }));
   store.set('wallets', migrated);
   return migrated;
 }
@@ -38,6 +40,19 @@ export function upsertWallet(address, name) {
     list.push({ address, name });
   }
   store.set('wallets', list);
+}
+
+// After migration the index holds the address as a placeholder name (the
+// real name lives inside the encrypted keychain secret). Whenever a secret
+// is decrypted on demand anyway, adopt its name — but never overwrite a
+// name the user chose themselves.
+export function healWalletName(address, name) {
+  const list = store.get('wallets') || [];
+  const entry = list.find((w) => w.address === address);
+  if (entry && entry.name === address && name && name !== address) {
+    entry.name = name;
+    store.set('wallets', list);
+  }
 }
 
 export function removeWallet(address) {

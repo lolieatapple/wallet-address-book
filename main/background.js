@@ -5,7 +5,7 @@ import keytar from 'keytar';
 import Store from 'electron-store';
 import { createBalanceCache } from './services/balance';
 import { startHttpApi, stopHttpApi, getDefaultAddress, setDefaultAddress } from './services/http-api';
-import { getWalletList, upsertWallet, removeWallet } from './services/wallet-index';
+import { getWalletList, upsertWallet, removeWallet, healWalletName } from './services/wallet-index';
 const prompt = require('electron-prompt');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -58,7 +58,11 @@ let mainWindow;
 
   ipcMain.handle('getPk', async (event, message) => {
     await systemPreferences.promptTouchID('Authenticate to read private key of ' + message);
-    return keytar.getPassword('wallet-addr-book', message);
+    const raw = await keytar.getPassword('wallet-addr-book', message);
+    // The secret is decrypted anyway — use its name to replace a migration
+    // placeholder in the index (no extra keychain access, no extra prompt).
+    if (raw) healWalletName(message, JSON.parse(raw).name);
+    return raw;
   });
 
   // Wallet listing is served from the non-secret index — enumerating
