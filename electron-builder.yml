@@ -9,6 +9,13 @@ files:
     filter:
       - package.json
       - app
+# Native modules must live outside app.asar: at runtime Electron extracts
+# in-asar .node files to a temp dir where they keep the prebuilt vendor
+# signature, and hardened-runtime library validation refuses to dlopen a
+# binary signed by a different Team ID. Unpacked copies get re-signed with
+# the app identity by electron-builder.
+asarUnpack:
+  - "**/*.node"
 mac:
   # Local builds skip notarization; the release workflow rewrites this
   # line into a teamId block (see .github/workflows/release.yml).
