@@ -5,6 +5,7 @@ import keytar from 'keytar';
 import Store from 'electron-store';
 import { createBalanceCache } from './services/balance';
 import { startHttpApi, stopHttpApi, getDefaultAddress, setDefaultAddress } from './services/http-api';
+import { getWalletList, upsertWallet, removeWallet } from './services/wallet-index';
 const prompt = require('electron-prompt');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -39,12 +40,14 @@ let mainWindow;
 
   ipcMain.handle('setPk', async (event, message) => {
     await keytar.setPassword('wallet-addr-book', message.address, message.json);
+    upsertWallet(message.address, JSON.parse(message.json).name);
     return true;
   });
 
   ipcMain.handle('delPk', async (event, message) => {
     await systemPreferences.promptTouchID('Remove account: ' + message);
     await keytar.deletePassword('wallet-addr-book', message);
+    removeWallet(message);
     // A stale default pointing at a deleted wallet would make the CLI/API
     // hand out a dead address, so clear it in the same operation.
     if (getDefaultAddress() === message) {
@@ -58,8 +61,17 @@ let mainWindow;
     return keytar.getPassword('wallet-addr-book', message);
   });
 
-  ipcMain.handle('getAllPks', async () => {
-    return keytar.findCredentials('wallet-addr-book');
+  // Wallet listing is served from the non-secret index — enumerating
+  // keychain secrets would trigger one macOS ACL prompt per wallet.
+  ipcMain.handle('getWallets', async () => {
+    return getWalletList();
+  });
+
+  // Renaming only touches the index; the keychain item (and its ACL
+  // prompt) stays untouched.
+  ipcMain.handle('renameWallet', (event, { address, name }) => {
+    upsertWallet(address, name);
+    return true;
   });
 
   ipcMain.handle('getBalance', async (event, message) => {

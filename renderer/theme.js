@@ -12,10 +12,11 @@ const DISPLAY_FONT =
 
 export function buildTheme(mode) {
   const isDark = mode === 'dark';
-  const ink = isDark ? '#F2F2EE' : '#141412';
-  const paper = isDark ? '#121210' : '#FFFFFF';
-  const canvas = isDark ? '#0B0B0A' : '#F6F6F3';
-  const muted = isDark ? '#8F8F88' : '#71716A';
+  // Pure black & white — no tinted off-whites.
+  const ink = isDark ? '#FFFFFF' : '#000000';
+  const paper = isDark ? '#000000' : '#FFFFFF';
+  const canvas = isDark ? '#000000' : '#FFFFFF';
+  const muted = isDark ? '#8C8C8C' : '#6E6E6E';
 
   return createTheme({
     palette: {
@@ -27,7 +28,7 @@ export function buildTheme(mode) {
       success: { main: ink, contrastText: paper },
       background: { default: canvas, paper },
       text: { primary: ink, secondary: muted },
-      divider: isDark ? 'rgba(242,242,238,0.16)' : 'rgba(20,20,18,0.16)',
+      divider: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)',
     },
     shape: { borderRadius: 0 },
     typography: {

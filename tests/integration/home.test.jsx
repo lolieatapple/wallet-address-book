@@ -5,9 +5,9 @@ import { walletServiceMocks, resetAllMocks } from '../mocks';
 import Home from '../../renderer/pages/home';
 
 const WALLETS = [
-  { account: '0xAliceAddr0001', password: JSON.stringify({ name: 'Alice', pk: '0x1' }) },
-  { account: '0xBobAddress002', password: JSON.stringify({ name: 'Bob', pk: '0x2' }) },
-  { account: '0xCharlie00003', password: JSON.stringify({ name: 'Charlie', pk: '0x3' }) },
+  { address: '0xAliceAddr0001', name: 'Alice' },
+  { address: '0xBobAddress002', name: 'Bob' },
+  { address: '0xCharlie00003', name: 'Charlie' },
 ];
 
 const BALANCES = {

@@ -7,8 +7,8 @@ import WalletRow from '../../renderer/components/WalletRow';
 
 function renderRow(props = {}) {
   const defaultWallet = {
-    account: '0xTestAddress123',
-    password: JSON.stringify({ name: 'TestWallet', pk: '0xpk' }),
+    address: '0xTestAddress123',
+    name: 'TestWallet',
   };
   const defaultBalance = { total_usd_value: 500 };
 
@@ -78,7 +78,7 @@ describe('WalletRow', () => {
     expect(onMessage).toHaveBeenCalledWith('Private Key Copied');
   });
 
-  test('edit name prompts and saves', async () => {
+  test('edit name prompts and renames via index (no keychain write)', async () => {
     const onRefresh = mock(() => {});
     walletServiceMocks.promptInput.mockResolvedValueOnce('NewName');
 
@@ -90,10 +90,8 @@ describe('WalletRow', () => {
     await act(async () => editBtn.click());
 
     expect(walletServiceMocks.promptInput).toHaveBeenCalledWith('Modify Name', 'Name', 'TestWallet');
-    expect(walletServiceMocks.saveWallet).toHaveBeenCalledWith('0xTestAddress123', {
-      name: 'NewName',
-      pk: '0xpk',
-    });
+    expect(walletServiceMocks.renameWallet).toHaveBeenCalledWith('0xTestAddress123', 'NewName');
+    expect(walletServiceMocks.saveWallet).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalled();
   });
 
@@ -106,7 +104,7 @@ describe('WalletRow', () => {
     const buttons = screen.getAllByRole('button');
     await act(async () => buttons[1].click());
 
-    expect(walletServiceMocks.saveWallet).not.toHaveBeenCalled();
+    expect(walletServiceMocks.renameWallet).not.toHaveBeenCalled();
     expect(onRefresh).not.toHaveBeenCalled();
   });
 

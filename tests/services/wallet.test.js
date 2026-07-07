@@ -16,7 +16,7 @@ describe('wallet service interface', () => {
 
   describe('getAllWallets', () => {
     test('returns wallets', async () => {
-      const wallets = [{ account: '0xabc', password: '{"name":"Test","pk":"0x123"}' }];
+      const wallets = [{ address: '0xabc', name: 'Test' }];
       walletServiceMocks.getAllWallets.mockResolvedValueOnce(wallets);
       const result = await walletServiceMocks.getAllWallets();
       expect(result).toEqual(wallets);
@@ -104,6 +104,14 @@ describe('wallet service interface', () => {
       walletServiceMocks.setDefaultWallet.mockResolvedValueOnce(true);
       await walletServiceMocks.setDefaultWallet('0xaddr');
       expect(walletServiceMocks.setDefaultWallet).toHaveBeenCalledWith('0xaddr');
+    });
+  });
+
+  describe('renameWallet', () => {
+    test('accepts address and new name', async () => {
+      walletServiceMocks.renameWallet.mockResolvedValueOnce(true);
+      await walletServiceMocks.renameWallet('0xaddr', 'NewName');
+      expect(walletServiceMocks.renameWallet).toHaveBeenCalledWith('0xaddr', 'NewName');
     });
   });
 });

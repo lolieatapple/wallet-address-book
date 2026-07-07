@@ -5,6 +5,7 @@ import path from 'path';
 import { systemPreferences } from 'electron';
 import keytar from 'keytar';
 import Store from 'electron-store';
+import { getWalletList } from './wallet-index';
 
 const store = new Store({ name: 'default-wallet' });
 const SERVICE_NAME = 'wallet-addr-book';
@@ -16,10 +17,6 @@ let server = null;
 function jsonResponse(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(data));
-}
-
-async function getAllCredentials() {
-  return (await keytar.findCredentials(SERVICE_NAME)) || [];
 }
 
 async function getPrivateKeyWithAuth(address, purpose) {
@@ -77,22 +74,22 @@ async function handleRequest(req, res) {
     const addrMatch = path.match(/^\/wallet\/(\d+)\/address$/);
     if (addrMatch) {
       const idx = parseInt(addrMatch[1], 10);
-      const creds = await getAllCredentials();
-      if (idx < 1 || idx > creds.length) {
-        return jsonResponse(res, 404, { error: `Wallet #${idx} not found. Total: ${creds.length}` });
+      const wallets = await getWalletList();
+      if (idx < 1 || idx > wallets.length) {
+        return jsonResponse(res, 404, { error: `Wallet #${idx} not found. Total: ${wallets.length}` });
       }
-      return jsonResponse(res, 200, { index: idx, address: creds[idx - 1].account });
+      return jsonResponse(res, 200, { index: idx, address: wallets[idx - 1].address });
     }
 
     // GET /wallet/:index/pk
     const pkMatch = path.match(/^\/wallet\/(\d+)\/pk$/);
     if (pkMatch) {
       const idx = parseInt(pkMatch[1], 10);
-      const creds = await getAllCredentials();
-      if (idx < 1 || idx > creds.length) {
-        return jsonResponse(res, 404, { error: `Wallet #${idx} not found. Total: ${creds.length}` });
+      const wallets = await getWalletList();
+      if (idx < 1 || idx > wallets.length) {
+        return jsonResponse(res, 404, { error: `Wallet #${idx} not found. Total: ${wallets.length}` });
       }
-      const address = creds[idx - 1].account;
+      const address = wallets[idx - 1].address;
       // Show the full address in the TouchID prompt so the user can verify
       // which key is being read — the index alone can shift between calls.
       const pk = await getPrivateKeyWithAuth(address, `API: Read private key for wallet #${idx} (${address})`);
@@ -102,19 +99,17 @@ async function handleRequest(req, res) {
       return jsonResponse(res, 200, { index: idx, address, privateKey: pk });
     }
 
-    // GET /wallets — list all addresses
+    // GET /wallets — list all addresses (from the non-secret index; must
+    // never enumerate keychain secrets, which prompts once per item)
     if (path === '/wallets') {
-      const creds = await getAllCredentials();
+      const wallets = await getWalletList();
       const defaultAddr = store.get('defaultAddress');
-      const list = creds.map((c, i) => {
-        const data = JSON.parse(c.password);
-        return {
-          index: i + 1,
-          name: data.name,
-          address: c.account,
-          isDefault: c.account === defaultAddr,
-        };
-      });
+      const list = wallets.map((w, i) => ({
+        index: i + 1,
+        name: w.name,
+        address: w.address,
+        isDefault: w.address === defaultAddr,
+      }));
       return jsonResponse(res, 200, { wallets: list });
     }
 

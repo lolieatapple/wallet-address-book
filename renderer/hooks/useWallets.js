@@ -29,7 +29,7 @@ export function useWallets() {
         ]);
         if (cancelled) return;
 
-        const addresses = allWallets.map((w) => w.account);
+        const addresses = allWallets.map((w) => w.address);
         const balanceData = await fetchBalances(addresses);
         if (cancelled) return;
 

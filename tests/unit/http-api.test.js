@@ -36,6 +36,7 @@ mock.module('electron-store', () => {
 const { startHttpApi, stopHttpApi, getDefaultAddress, setDefaultAddress } = await import(
   '../../main/services/http-api'
 );
+const { setWalletList } = await import('../../main/services/wallet-index');
 
 const TEST_SOCKET = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wab-api-test-')), 'api.sock');
 
@@ -73,6 +74,7 @@ describe('HTTP API', () => {
     mockFindCredentials.mockReset();
     mockPromptTouchID.mockResolvedValue();
     setDefaultAddress(null);
+    setWalletList([]);
   });
 
   test('socket file is created with 0600 permissions', async () => {
@@ -151,9 +153,9 @@ describe('HTTP API', () => {
 
   describe('GET /wallet/:index/address', () => {
     test('returns address by index', async () => {
-      mockFindCredentials.mockResolvedValueOnce([
-        { account: '0xFirst', password: '{"name":"A","pk":"0x1"}' },
-        { account: '0xSecond', password: '{"name":"B","pk":"0x2"}' },
+      setWalletList([
+        { address: '0xFirst', name: 'A' },
+        { address: '0xSecond', name: 'B' },
       ]);
 
       const { status, body } = await get('/wallet/2/address');
@@ -163,15 +165,12 @@ describe('HTTP API', () => {
     });
 
     test('returns 404 for out-of-range index', async () => {
-      mockFindCredentials.mockResolvedValueOnce([]);
       const { status } = await get('/wallet/1/address');
       expect(status).toBe(404);
     });
 
     test('returns 404 for index 0', async () => {
-      mockFindCredentials.mockResolvedValueOnce([
-        { account: '0xFirst', password: '{}' },
-      ]);
+      setWalletList([{ address: '0xFirst', name: 'A' }]);
       const { status } = await get('/wallet/0/address');
       expect(status).toBe(404);
     });
@@ -179,9 +178,7 @@ describe('HTTP API', () => {
 
   describe('GET /wallet/:index/pk', () => {
     test('returns private key by index after TouchID, prompt includes address', async () => {
-      mockFindCredentials.mockResolvedValueOnce([
-        { account: '0xAddr1', password: '{"name":"A","pk":"0x1"}' },
-      ]);
+      setWalletList([{ address: '0xAddr1', name: 'A' }]);
       mockGetPassword.mockResolvedValueOnce(JSON.stringify({ pk: '0xPK1', name: 'A' }));
 
       const { status, body } = await get('/wallet/1/pk');
@@ -192,9 +189,7 @@ describe('HTTP API', () => {
     });
 
     test('returns 403 when TouchID denied', async () => {
-      mockFindCredentials.mockResolvedValueOnce([
-        { account: '0xAddr1', password: '{}' },
-      ]);
+      setWalletList([{ address: '0xAddr1', name: 'A' }]);
       mockPromptTouchID.mockRejectedValueOnce(new Error('denied'));
 
       const { status } = await get('/wallet/1/pk');
@@ -204,9 +199,9 @@ describe('HTTP API', () => {
 
   describe('GET /wallets', () => {
     test('lists all wallets with default flag', async () => {
-      mockFindCredentials.mockResolvedValueOnce([
-        { account: '0xA', password: '{"name":"Alice","pk":"0x1"}' },
-        { account: '0xB', password: '{"name":"Bob","pk":"0x2"}' },
+      setWalletList([
+        { address: '0xA', name: 'Alice' },
+        { address: '0xB', name: 'Bob' },
       ]);
       setDefaultAddress('0xB');
 
@@ -215,6 +210,18 @@ describe('HTTP API', () => {
       expect(body.wallets).toHaveLength(2);
       expect(body.wallets[0]).toEqual({ index: 1, name: 'Alice', address: '0xA', isDefault: false });
       expect(body.wallets[1]).toEqual({ index: 2, name: 'Bob', address: '0xB', isDefault: true });
+    });
+
+    test('never enumerates keychain secrets when the index exists', async () => {
+      setWalletList([{ address: '0xA', name: 'Alice' }]);
+
+      await get('/wallets');
+      await get('/wallet/1/address');
+
+      // findCredentials reads every item's secret and triggers one macOS
+      // ACL prompt per wallet — listing must be served from the index.
+      expect(mockFindCredentials).not.toHaveBeenCalled();
+      expect(mockGetPassword).not.toHaveBeenCalled();
     });
   });
 

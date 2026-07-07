@@ -24,7 +24,7 @@ describe('useWallets', () => {
   });
 
   test('starts in loading state and loads wallets', async () => {
-    const wallets = [{ account: '0xabc', password: '{"name":"A","pk":"0x1"}' }];
+    const wallets = [{ address: '0xabc', name: 'A' }];
     const balances = { '0xabc': { total_usd_value: 100 } };
 
     walletServiceMocks.getAllWallets.mockResolvedValueOnce(wallets);
@@ -41,8 +41,8 @@ describe('useWallets', () => {
 
   test('passes wallet addresses to fetchBalances', async () => {
     const wallets = [
-      { account: '0xa', password: '{}' },
-      { account: '0xb', password: '{}' },
+      { address: '0xa', name: 'A' },
+      { address: '0xb', name: 'B' },
     ];
     walletServiceMocks.getAllWallets.mockResolvedValueOnce(wallets);
     walletServiceMocks.fetchBalances.mockResolvedValueOnce({});
@@ -62,7 +62,7 @@ describe('useWallets', () => {
       render(<TestHarness />);
     });
 
-    const newWallets = [{ account: '0xnew', password: '{}' }];
+    const newWallets = [{ address: '0xnew', name: 'New' }];
     walletServiceMocks.getAllWallets.mockResolvedValueOnce(newWallets);
     walletServiceMocks.fetchBalances.mockResolvedValueOnce({});
 
@@ -75,7 +75,7 @@ describe('useWallets', () => {
   });
 
   test('handles fetchBalances returning null gracefully', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce([{ account: '0xa', password: '{}' }]);
+    walletServiceMocks.getAllWallets.mockResolvedValueOnce([{ address: '0xa', name: 'A' }]);
     walletServiceMocks.fetchBalances.mockResolvedValueOnce(null);
 
     await act(async () => {

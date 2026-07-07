@@ -2,13 +2,18 @@
 // exposed by main/preload.js via contextBridge (contextIsolation is on,
 // so the renderer has no direct Node/Electron access).
 
+// Returns non-secret wallet entries: [{ address, name }]
 export async function getAllWallets() {
-  const credentials = await window.walletApi.getAllPks();
-  return credentials || [];
+  const wallets = await window.walletApi.getWallets();
+  return wallets || [];
 }
 
 export async function saveWallet(address, data) {
   return window.walletApi.setPk(address, JSON.stringify(data));
+}
+
+export async function renameWallet(address, name) {
+  return window.walletApi.renameWallet(address, name);
 }
 
 export async function deleteWallet(address) {

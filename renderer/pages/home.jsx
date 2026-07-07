@@ -16,8 +16,8 @@ export default function Home() {
     if (!filter) return wallets;
     const q = filter.toLowerCase();
     return wallets.filter((w) => {
-      const name = JSON.parse(w.password).name || '';
-      return name.toLowerCase().includes(q) || w.account.toLowerCase().includes(q);
+      const name = w.name || '';
+      return name.toLowerCase().includes(q) || w.address.toLowerCase().includes(q);
     });
   }, [wallets, filter]);
 

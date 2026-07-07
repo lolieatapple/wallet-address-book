@@ -6,10 +6,7 @@ import WalletTable from '../../renderer/components/WalletTable';
 const noop = () => {};
 
 function makeWallet(address, name) {
-  return {
-    account: address,
-    password: JSON.stringify({ name, pk: '0xfake' }),
-  };
+  return { address, name };
 }
 
 describe('WalletTable', () => {

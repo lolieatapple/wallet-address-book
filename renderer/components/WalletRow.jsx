@@ -18,20 +18,20 @@ import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import copy2Clipboard from 'copy-to-clipboard';
 import { formatToDollar } from '../utils/format';
-import { getPrivateKey, saveWallet, deleteWallet, promptInput, openExternal } from '../services/wallet';
+import { getPrivateKey, deleteWallet, promptInput, openExternal, renameWallet } from '../services/wallet';
 import { MONO_FONT, ACCENT } from '../theme';
 
 export default function WalletRow({ wallet, balance, index, onRefresh, onMessage, isDefault, onSetDefault }) {
   const theme = useTheme();
-  const data = JSON.parse(wallet.password);
-  const address = wallet.account;
+  const { address, name: walletName } = wallet;
   const displayBalance = balance ? formatToDollar(balance.total_usd_value) : 'error';
 
   const handleEditName = async () => {
     try {
-      const name = await promptInput('Modify Name', 'Name', data.name);
+      const name = await promptInput('Modify Name', 'Name', walletName);
       if (name) {
-        await saveWallet(address, { ...data, name });
+        // Rename only touches the non-secret index — no keychain access.
+        await renameWallet(address, name);
         onRefresh();
       }
     } catch (error) {
@@ -57,7 +57,7 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
   };
 
   const handleDelete = async () => {
-    if (confirm(`Are you sure you want to delete ${data.name}?`)) {
+    if (confirm(`Are you sure you want to delete ${walletName}?`)) {
       try {
         await deleteWallet(address);
         onRefresh();
@@ -106,7 +106,7 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
       <TableCell sx={{ padding: '4px 16px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography variant="body2" fontWeight={600} sx={{ letterSpacing: '0.01em' }}>
-            {data.name}
+            {walletName}
           </Typography>
           <IconButton size="small" onClick={handleEditName} sx={{ ml: 1 }}>
             <EditIcon sx={iconSx} />

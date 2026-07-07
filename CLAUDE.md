@@ -22,6 +22,7 @@ bun test tests/unit/format.test.js  # Run a single test file
 ### Main Process (`main/`)
 - **`background.js`** — Electron main process. IPC handlers for keychain ops, balance fetching, dark mode, prompt dialogs, default wallet management, `openExternal` (https only). IPC handlers let errors propagate to the renderer (no swallowing); the UI event handlers catch and display them. Hides to tray on close (Cmd+Q to actually quit). Starts HTTP API server.
 - **`preload.js`** — contextBridge whitelist exposed as `window.walletApi`; the only path from renderer to main (contextIsolation is on, nodeIntegration off).
+- **`services/wallet-index.js`** — non-secret wallet listing `[{ address, name }]` in electron-store. Listing/renaming must NEVER enumerate keychain secrets (each secret read triggers one macOS ACL prompt per item); secrets are read one item at a time, on demand only. One-time migration from keychain on first run.
 - **`services/balance.js`** — `createBalanceCache(expirationMs, store?)` factory with 10-min cache; successful results are persisted to the injected electron-store and a failed fetch falls back to the last success (never overwrites it).
 - **`services/http-api.js`** — HTTP server over unix socket `~/.wallet-address-book/api.sock` (0600). Endpoints: `/wallets`, `/default/address`, `/default/pk`, `/wallet/:address/pk`, `/wallet/:index/address`, `/wallet/:index/pk`. Private key endpoints require TouchID and show the wallet address in the prompt.
 
@@ -34,7 +35,7 @@ bun test tests/unit/format.test.js  # Run a single test file
 
 ### Key Patterns
 - **IPC**: Renderer calls `window.walletApi.*` (from `main/preload.js`) → main handles via `ipcMain.handle(channel)`.
-- **Data format**: Wallets stored in keytar as `{ name, pk }` JSON, keyed by address under service `'wallet-addr-book'`.
+- **Data format**: Private keys stored in keytar as `{ name, pk }` JSON, keyed by address under service `'wallet-addr-book'` (login keychain: no iCloud sync, migrates with Time Machine). The wallet list shown in UI/API comes from `wallet-index` (electron-store), not the keychain.
 - **Renderer is a plain web build**: no `electron-renderer` webpack target, no Node access; anything needing main-process capabilities must go through the preload whitelist.
 
 ## Testing

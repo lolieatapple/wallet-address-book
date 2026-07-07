@@ -65,13 +65,13 @@ export default function WalletTable({ wallets, balances, isLoading, onRefresh, o
             ) : (
               wallets.map((w, i) => (
                 <WalletRow
-                  key={w.account}
+                  key={w.address}
                   wallet={w}
-                  balance={balances[w.account]}
+                  balance={balances[w.address]}
                   index={i}
                   onRefresh={onRefresh}
                   onMessage={onMessage}
-                  isDefault={w.account === defaultAddress}
+                  isDefault={w.address === defaultAddress}
                   onSetDefault={onSetDefault}
                 />
               ))
