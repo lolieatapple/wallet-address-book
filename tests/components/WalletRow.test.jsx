@@ -79,7 +79,7 @@ describe('WalletRow', () => {
     // live user-activation, which expires during the TouchID/keychain wait,
     // and copy-to-clipboard's fallback calls window.prompt (unsupported in
     // Electron renderers).
-    expect(walletServiceMocks.copyText).toHaveBeenCalledWith('0xpk123');
+    expect(walletServiceMocks.copyText).toHaveBeenCalledWith('0xpk123', { sensitive: true });
     expect(clipboardMock.copy).not.toHaveBeenCalled();
     expect(onMessage).toHaveBeenCalledWith('Private Key Copied');
     // Reading the pk heals a migrated placeholder name in the index, so the

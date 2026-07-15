@@ -53,8 +53,10 @@ export async function openExternal(url) {
 // Main-process clipboard write. document.execCommand('copy') requires a live
 // user-activation, which expires during the TouchID/keychain wait of a
 // private-key read; the IPC clipboard has no such constraint.
-export async function copyText(text) {
-  return window.walletApi.copyText(text);
+// Pass { sensitive: true } for secrets so the copy participates in the
+// opt-in clipboard auto-clear timer.
+export async function copyText(text, opts) {
+  return window.walletApi.copyText(text, opts);
 }
 
 // Bulk-restores migrated placeholder names from the keychain.

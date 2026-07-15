@@ -46,3 +46,16 @@ mock.module(walletServicePath, () => ({
   restoreNames: (...args) => m.walletService.restoreNames(...args),
   onRestoreNamesRequested: (...args) => m.walletService.onRestoreNamesRequested(...args),
 }));
+
+// Same for the generic items service (Secret Holder).
+const itemsServicePath = require.resolve('../renderer/services/items');
+mock.module(itemsServicePath, () => ({
+  listItems: (...args) => m.itemsService.listItems(...args),
+  createItem: (...args) => m.itemsService.createItem(...args),
+  updateItem: (...args) => m.itemsService.updateItem(...args),
+  deleteItem: (...args) => m.itemsService.deleteItem(...args),
+  getItemSecrets: (...args) => m.itemsService.getItemSecrets(...args),
+  getSettings: (...args) => m.itemsService.getSettings(...args),
+  updateSettings: (...args) => m.itemsService.updateSettings(...args),
+  copySecretText: (...args) => m.itemsService.copySecretText(...args),
+}));

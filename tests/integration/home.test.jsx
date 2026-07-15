@@ -1,20 +1,38 @@
-import { test, expect, describe, mock, beforeEach, afterEach } from 'bun:test';
+import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import React from 'react';
 import { render, screen, act, fireEvent, cleanup } from '@testing-library/react';
-import { walletServiceMocks, resetAllMocks } from '../mocks';
+import { walletServiceMocks, itemsServiceMocks, resetAllMocks, makeItem, makeWalletItem } from '../mocks';
 import Home from '../../renderer/pages/home';
 
-const WALLETS = [
-  { address: '0xAliceAddr0001', name: 'Alice' },
-  { address: '0xBobAddress002', name: 'Bob' },
-  { address: '0xCharlie00003', name: 'Charlie' },
+const ITEMS = [
+  makeWalletItem('0xAliceAddr0001', 'Alice'),
+  makeWalletItem('0xBobAddress002', 'Bob'),
+  makeItem({
+    name: 'openai/prod',
+    type: 'apikey',
+    fields: { url: 'https://api.openai.com' },
+    secretFields: ['apikey'],
+  }),
+  makeItem({
+    name: 'deploy-server',
+    type: 'ssh',
+    fields: { host: 'root@10.0.0.1:22' },
+    secretFields: ['password'],
+  }),
 ];
 
 const BALANCES = {
   '0xAliceAddr0001': { total_usd_value: 10000 },
   '0xBobAddress002': { total_usd_value: 500.5 },
-  '0xCharlie00003': { total_usd_value: 0 },
 };
+
+async function renderHome(items = ITEMS, balances = BALANCES) {
+  itemsServiceMocks.listItems.mockResolvedValue(items);
+  walletServiceMocks.fetchBalances.mockResolvedValue(balances);
+  await act(async () => {
+    render(<Home />);
+  });
+}
 
 describe('Home page integration', () => {
   afterEach(cleanup);
@@ -22,11 +40,10 @@ describe('Home page integration', () => {
   beforeEach(() => {
     resetAllMocks();
     walletServiceMocks.saveWallet.mockResolvedValue(true);
+    walletServiceMocks.onRestoreNamesRequested.mockReturnValue(() => {});
   });
 
   test('app-menu restore-names command runs restore and shows the result', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValue(WALLETS);
-    walletServiceMocks.fetchBalances.mockResolvedValue(BALANCES);
     walletServiceMocks.restoreNames.mockResolvedValueOnce({ pending: 3, restored: 2 });
 
     let menuHandler;
@@ -35,12 +52,7 @@ describe('Home page integration', () => {
       return () => {};
     });
 
-    await act(async () => {
-      render(<Home />);
-    });
-
-    // The toolbar must NOT carry this rarely-used action.
-    expect(screen.queryByText('Restore Names')).toBeNull();
+    await renderHome();
 
     // Simulate the app-menu click event arriving from the main process.
     await act(async () => menuHandler());
@@ -49,53 +61,47 @@ describe('Home page integration', () => {
     expect(screen.getByText('Restored 2 of 3 wallet names')).toBeTruthy();
   });
 
-  test('renders full page with wallets', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce(WALLETS);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce(BALANCES);
+  test('renders all items in the All view', async () => {
+    await renderHome();
 
-    await act(async () => {
-      render(<Home />);
-    });
-
+    // Default category is All Items → generic list with every item
+    expect(screen.getByText('All Items (4)')).toBeTruthy();
     expect(screen.getByText('Alice')).toBeTruthy();
     expect(screen.getByText('Bob')).toBeTruthy();
-    expect(screen.getByText('Charlie')).toBeTruthy();
+    expect(screen.getByText('openai/prod')).toBeTruthy();
+    expect(screen.getByText('deploy-server')).toBeTruthy();
+  });
 
+  test('wallet category shows the balance table with balances visible at a glance', async () => {
+    await renderHome();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Wallets'));
+    });
+
+    expect(screen.getByText('Wallets (2)')).toBeTruthy();
     expect(screen.getByText('$10,000.00')).toBeTruthy();
     expect(screen.getByText('$500.50')).toBeTruthy();
-    expect(screen.getByText('$0')).toBeTruthy();
-
-    expect(screen.getByText('Your Wallets (3)')).toBeTruthy();
+    expect(screen.getByText('0xAliceAddr0001')).toBeTruthy();
   });
 
-  test('search filters wallets by name', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce(WALLETS);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce(BALANCES);
+  test('search filters items by name across types', async () => {
+    await renderHome();
 
+    const searchInput = screen.getByLabelText('Search by name or field');
     await act(async () => {
-      render(<Home />);
+      fireEvent.change(searchInput, { target: { value: 'openai' } });
     });
 
-    const searchInput = screen.getByLabelText('Search by name or address');
-    await act(async () => {
-      fireEvent.change(searchInput, { target: { value: 'alice' } });
-    });
-
-    expect(screen.getByText('Alice')).toBeTruthy();
-    expect(screen.queryByText('Bob')).toBeNull();
-    expect(screen.queryByText('Charlie')).toBeNull();
-    expect(screen.getByText('Your Wallets (1)')).toBeTruthy();
+    expect(screen.getByText('openai/prod')).toBeTruthy();
+    expect(screen.queryByText('Alice')).toBeNull();
+    expect(screen.queryByText('deploy-server')).toBeNull();
   });
 
-  test('search filters wallets by address', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce(WALLETS);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce(BALANCES);
+  test('search matches plaintext field values (address)', async () => {
+    await renderHome();
 
-    await act(async () => {
-      render(<Home />);
-    });
-
-    const searchInput = screen.getByLabelText('Search by name or address');
+    const searchInput = screen.getByLabelText('Search by name or field');
     await act(async () => {
       fireEvent.change(searchInput, { target: { value: '0xBob' } });
     });
@@ -104,53 +110,41 @@ describe('Home page integration', () => {
     expect(screen.queryByText('Alice')).toBeNull();
   });
 
-  test('search with no matches shows empty state', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce(WALLETS);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce(BALANCES);
+  test('clicking an item opens the detail drawer with TouchID-marked secrets', async () => {
+    await renderHome();
 
     await act(async () => {
-      render(<Home />);
+      fireEvent.click(screen.getByText('openai/prod'));
     });
 
-    const searchInput = screen.getByLabelText('Search by name or address');
-    await act(async () => {
-      fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
-    });
-
-    expect(
-      screen.getByText('No wallets found. Create or import a wallet to get started.')
-    ).toBeTruthy();
+    // Drawer shows the plaintext field a second time (list row + drawer)
+    // plus the masked, TouchID-marked secret field.
+    expect(screen.getAllByText('https://api.openai.com')).toHaveLength(2);
+    expect(screen.getByText('••••••••••••')).toBeTruthy();
+    expect(screen.getByText('TOUCHID')).toBeTruthy();
   });
 
-  test('create wallet calls saveWallet with valid eth address', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce([]);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce({});
+  test('create wallet via New dialog calls saveWallet with a valid eth address', async () => {
+    await renderHome([], {});
 
     await act(async () => {
-      render(<Home />);
+      fireEvent.click(screen.getByRole('button', { name: /New/ }));
     });
 
-    // Prepare refresh after create
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce([]);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce({});
-
-    await act(async () => screen.getByText('Create New').click());
+    // Wallet is the default type; leaving PK empty generates a new wallet
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    });
 
     expect(walletServiceMocks.saveWallet).toHaveBeenCalledTimes(1);
-    const [address] = walletServiceMocks.saveWallet.mock.calls[0];
+    const [address, data] = walletServiceMocks.saveWallet.mock.calls[0];
     expect(address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(data.pk).toMatch(/^0x[0-9a-fA-F]{64}$/);
   });
 
-  test('shows empty state initially with no wallets', async () => {
-    walletServiceMocks.getAllWallets.mockResolvedValueOnce([]);
-    walletServiceMocks.fetchBalances.mockResolvedValueOnce({});
+  test('shows empty state with no items', async () => {
+    await renderHome([], {});
 
-    await act(async () => {
-      render(<Home />);
-    });
-
-    expect(
-      screen.getByText('No wallets found. Create or import a wallet to get started.')
-    ).toBeTruthy();
+    expect(screen.getByText('No items yet. Click New to add one.')).toBeTruthy();
   });
 });

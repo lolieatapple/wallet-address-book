@@ -21,7 +21,7 @@ import { formatToDollar } from '../utils/format';
 import { getPrivateKey, deleteWallet, promptInput, openExternal, renameWallet, copyText } from '../services/wallet';
 import { MONO_FONT, ACCENT } from '../theme';
 
-export default function WalletRow({ wallet, balance, index, onRefresh, onMessage, isDefault, onSetDefault }) {
+export default function WalletRow({ wallet, balance, index, onRefresh, onMessage, isDefault, onSetDefault, onOpenDetail }) {
   const theme = useTheme();
   const { address, name: walletName } = wallet;
   const displayBalance = balance ? formatToDollar(balance.total_usd_value) : 'error';
@@ -52,7 +52,7 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
         // IPC clipboard, not copy2Clipboard: execCommand('copy') needs a live
         // user-activation, which has expired after the TouchID/keychain wait
         // (and the library's fallback calls window.prompt, unsupported here).
-        await copyText(pk);
+        await copyText(pk, { sensitive: true });
         onMessage('Private Key Copied');
         // Reading the pk heals a migrated placeholder name in the index.
         onRefresh();
@@ -111,7 +111,16 @@ export default function WalletRow({ wallet, balance, index, onRefresh, onMessage
 
       <TableCell sx={{ padding: '4px 16px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="body2" fontWeight={600} sx={{ letterSpacing: '0.01em' }}>
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            onClick={() => onOpenDetail && onOpenDetail(wallet)}
+            sx={{
+              letterSpacing: '0.01em',
+              cursor: onOpenDetail ? 'pointer' : 'default',
+              '&:hover': onOpenDetail ? { textDecoration: 'underline' } : undefined,
+            }}
+          >
             {walletName}
           </Typography>
           <IconButton size="small" onClick={handleEditName} sx={{ ml: 1 }}>

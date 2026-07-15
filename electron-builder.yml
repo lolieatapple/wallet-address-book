@@ -1,5 +1,5 @@
 appId: xyz.arieswallet.wallet.address.book
-productName: Wallet Address Book
+productName: Secret Holder
 copyright: Copyright © 2022 lolieatapple
 directories:
   output: dist
@@ -21,7 +21,7 @@ mac:
   # line into a teamId block (see .github/workflows/release.yml).
   notarize: false
   category: public.app-category.utilities
-  artifactName: Wallet-Address-Book-${version}-${arch}.${ext}
+  artifactName: Secret-Holder-${version}-${arch}.${ext}
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
