@@ -40,6 +40,7 @@ const valueSx = {
   fontFamily: MONO_FONT,
   fontSize: '0.78rem',
   wordBreak: 'break-all',
+  whiteSpace: 'pre-wrap', // multiline notes keep their line breaks
 };
 
 export default function ItemDrawer({
@@ -131,10 +132,11 @@ export default function ItemDrawer({
   };
 
   // Editing secret values needs the current ones first (one TouchID), so
-  // the edit dialog can show a complete, re-saveable picture.
+  // the edit dialog can show a complete, re-saveable picture. Wallet edits
+  // only touch name/notes in the index — no secrets load, no TouchID.
   const handleEdit = async () => {
     try {
-      const values = item.secretFields.length > 0 ? await loadSecrets() : {};
+      const values = !isWallet && item.secretFields.length > 0 ? await loadSecrets() : {};
       onEdit(item, values);
     } catch (error) {
       onMessage('Error loading secrets for edit: ' + error.message);
@@ -250,11 +252,9 @@ export default function ItemDrawer({
           <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={handleRename}>
             Rename
           </Button>
-          {!isWallet && (
-            <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={handleEdit}>
-              Edit
-            </Button>
-          )}
+          <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={handleEdit}>
+            Edit
+          </Button>
           <Button
             size="small"
             variant="outlined"

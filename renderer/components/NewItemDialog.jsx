@@ -20,7 +20,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { ethers } from 'ethers';
 import { TYPE_META, CATEGORY_ORDER } from '../utils/itemTypes';
-import { createItem, updateItem } from '../services/items';
+import { createItem, updateItem, listItems } from '../services/items';
 import { saveWallet } from '../services/wallet';
 import { MONO_FONT } from '../theme';
 
@@ -32,13 +32,15 @@ function defaultWalletName() {
   return 'Account_' + new Date().toISOString().split('.')[0];
 }
 
-// editItem/editSecrets: when set, the dialog edits an existing (non-wallet)
-// item — type is locked and secret values arrive pre-decrypted from the
-// drawer's TouchID-gated load.
+// editItem/editSecrets: when set, the dialog edits an existing item — type
+// is locked. For non-wallet items, secret values arrive pre-decrypted from
+// the drawer's TouchID-gated load; wallet edits only touch name and notes
+// (index-only, no keychain access, no TouchID).
 export default function NewItemDialog({ open, onClose, onRefresh, onMessage, initialType, editItem, editSecrets }) {
   const isEdit = !!editItem;
   const [type, setType] = useState('wallet');
   const [name, setName] = useState('');
+  const [notes, setNotes] = useState('');         // plaintext fields.notes on every type
   const [values, setValues] = useState({});       // template types: key -> value
   const [customRows, setCustomRows] = useState([]); // custom: [{key, value, secret}]
   const [walletPk, setWalletPk] = useState('');   // empty -> generate random
@@ -49,9 +51,12 @@ export default function NewItemDialog({ open, onClose, onRefresh, onMessage, ini
     if (isEdit) {
       setType(editItem.type);
       setName(editItem.name);
+      setNotes(String(editItem.fields?.notes ?? ''));
       if (editItem.type === 'custom') {
         setCustomRows([
-          ...Object.entries(editItem.fields || {}).map(([key, value]) => ({ key, value: String(value), secret: false })),
+          ...Object.entries(editItem.fields || {})
+            .filter(([key]) => key !== 'notes')
+            .map(([key, value]) => ({ key, value: String(value), secret: false })),
           ...editItem.secretFields.map((key) => ({ key, value: String(editSecrets?.[key] ?? ''), secret: true })),
         ]);
       } else {
@@ -60,6 +65,7 @@ export default function NewItemDialog({ open, onClose, onRefresh, onMessage, ini
     } else {
       setType(initialType && initialType !== 'all' ? initialType : 'wallet');
       setName('');
+      setNotes('');
       setValues({});
       setCustomRows([{ key: '', value: '', secret: true }]);
       setWalletPk('');
@@ -69,12 +75,29 @@ export default function NewItemDialog({ open, onClose, onRefresh, onMessage, ini
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (type === 'wallet') {
+      const trimmedNotes = notes.trim();
+      if (type === 'wallet' && isEdit) {
+        // Index-only update: keep the address, replace name/notes. The
+        // keychain item is never touched, so no TouchID fires.
+        const fields = { address: editItem.fields.address };
+        if (trimmedNotes) fields.notes = trimmedNotes;
+        await updateItem({ id: editItem.id, name: name.trim() || editItem.name, fields });
+        onMessage('Wallet updated');
+      } else if (type === 'wallet') {
         const wallet = walletPk.trim()
           ? new ethers.Wallet(walletPk.trim())
           : ethers.Wallet.createRandom();
         const walletName = name.trim() || defaultWalletName();
         await saveWallet(wallet.address, { name: walletName, pk: wallet.privateKey });
+        // saveWallet goes through the legacy setPk channel, which only knows
+        // address+pk — attach the notes with a follow-up index update.
+        if (trimmedNotes) {
+          const items = await listItems();
+          const created = items.find((it) => it.type === 'wallet' && it.fields.address === wallet.address);
+          if (created) {
+            await updateItem({ id: created.id, fields: { ...created.fields, notes: trimmedNotes } });
+          }
+        }
         onMessage(walletPk.trim() ? 'Wallet imported successfully!' : 'New wallet created successfully!');
       } else {
         if (!name.trim()) throw new Error('Name is required');
@@ -110,6 +133,7 @@ export default function NewItemDialog({ open, onClose, onRefresh, onMessage, ini
             }
           }
         }
+        if (trimmedNotes) fields.notes = trimmedNotes;
         if (isEdit) {
           await updateItem({
             id: editItem.id,
@@ -253,6 +277,17 @@ export default function NewItemDialog({ open, onClose, onRefresh, onMessage, ini
             </Typography>
           </Box>
         )}
+
+        <TextField
+          size="small"
+          label="Notes (optional)"
+          multiline
+          minRows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          helperText="Stored as plaintext, searchable, no TouchID"
+          sx={fieldInputSx}
+        />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button size="small" onClick={onClose}>Cancel</Button>

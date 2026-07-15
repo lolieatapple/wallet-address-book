@@ -2,7 +2,7 @@
   "private": true,
   "name": "secret-holder",
   "description": "Secret Holder — local manager for wallet private keys, API keys, SSH passwords and custom secrets, protected by the OS keychain and TouchID",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "author": "lolieatapple@gmail.com",
   "main": "app/background.js",
   "scripts": {
